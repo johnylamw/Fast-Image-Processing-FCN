@@ -28,7 +28,7 @@ def convert_raw_to_processed(source_directory, output_directory, operator):
     print(f"Converting Raw -> Processed Operator in {output_directory}")
     print("========================")
     for filename in os.listdir(source_directory):
-        if filename.lower().endswith(".png"):
+        if filename.lower().endswith(".png") or filename.lower().endswith(".jpg"):
             img = cv2.imread(os.path.join(source_directory, filename))
             if img is None:
                 print(f"Skipping {filename}: OpenCV could not read it")
