@@ -27,7 +27,13 @@ def convert_raw_to_processed(source_directory, output_directory, operator):
 
     print(f"Converting Raw -> Processed Operator in {output_directory}")
     print("========================")
-    for filename in os.listdir(source_directory):
+    for i, filename in enumerate(sorted(os.listdir(source_directory))):
+        output_filename = f"{os.path.splitext(filename)[0]}_{operator}.png"
+        output_path = os.path.join(output_directory, output_filename)
+        if os.path.isfile(output_path): 
+            continue
+
+        print(f"Applying Image Operator: {i} / {len(os.listdir(source_directory))} - {output_filename}")
         if filename.lower().endswith(".png") or filename.lower().endswith(".jpg"):
             img = cv2.imread(os.path.join(source_directory, filename))
             if img is None:
@@ -37,9 +43,7 @@ def convert_raw_to_processed(source_directory, output_directory, operator):
                 img,
                 operator,
             )
-            output_filename = f"{os.path.splitext(filename)[0]}_{operator}.png"
             cv2.imwrite(os.path.join(output_directory, output_filename), processed)
-
 
 def apply_operator(image, operator):
     # add more operators if needed
@@ -52,7 +56,6 @@ def apply_operator(image, operator):
         )
         return gray_sketch
     raise ValueError(f"Unknown operator: {operator}")
-
 
 def parse_args():
     parser = argparse.ArgumentParser(

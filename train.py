@@ -44,7 +44,7 @@ def train(model, optimizer, loss_fn, train_loader, total_iterations=500_000):
         # Save checkpoint every 50k iterations
         if iteration % 50000 == 0:
             os.makedirs("checkpoint", exist_ok=True)
-            torch.save(model.state_dict(), f"./checkpoint/model_iter_{iteration}.pt")
+            torch.save(model.state_dict(), f"./checkpoint/model_LARGE_iter_{iteration}.pt")
             
 if __name__ == "__main__":
     """
