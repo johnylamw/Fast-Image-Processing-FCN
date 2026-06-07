@@ -28,7 +28,7 @@ SOFTWARE.
 import os
 from typing import List, Dict, Any, Callable
 from torch.utils.data import Dataset
-from dataset.fivek_builder import MITAboveFiveKBuilder
+from datasets.fivek_builder import MITAboveFiveKBuilder
 
 
 class MITAboveFiveK(Dataset):

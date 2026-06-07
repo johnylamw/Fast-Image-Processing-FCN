@@ -84,7 +84,7 @@ json.load = patched_load
 # =====================================================================
 # 4. Import from the submodule and run the download
 # =====================================================================
-from dataset.fivek import MITAboveFiveK
+from datasets.fivek import MITAboveFiveK
 from torch.utils.data.dataloader import DataLoader
 
 if __name__ == "__main__":

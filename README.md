@@ -11,7 +11,7 @@ This downloads the DNG files and expert A TIFF files into:
 
 ```
 fivek_data/MITAboveFiveK/raw/
-fivek_data/MITAboveFiveK/processed/tiff16_a/
+fivek_data/MITAboveFiveK/targets/tiff16_a/
 ```
 
 #### Preparing the Processed Dataset
@@ -21,24 +21,24 @@ Convert the expert A TIFF files to PNG and apply the pencil operator:
 ```
 uv run python data_preparation.py \
   --tif-source fivek_data/MITAboveFiveK/processed/tiff16_a \
-  --raw-output dataset/adobe5k_processed/raw \
-  --processed-output dataset/adobe5k_processed/processed \
+  --raw-output dataset/adobe5k_processed/inputs \
+  --processed-output dataset/adobe5k_processed/targets \
   --operator pencil
 ```
 
 This writes converted PNG inputs to:
 
 ```
-dataset/adobe5k_processed/raw/
+dataset/adobe5k_processed/inputs/
 ```
 
 and processed pencil outputs to:
 
 ```
-dataset/adobe5k_processed/processed/
+dataset/adobe5k_processed/targets/
 ```
 
-The processed files are named like:
+The processe target files are named like:
 
 ```
 <image_name>_pencil.png
@@ -47,13 +47,13 @@ The processed files are named like:
 
 ---
 #### Other Variants (i.e. div2k):
-Div2k can be extracted to `dataset/div2k/raw`
+Div2k can be extracted to `dataset/div2k/inputs`
 and can be processed via:
 ```
 uv run python data_preparation.py \
   --skip-tif-conversion \
-  --raw-output dataset/div2k/raw \
-  --processed-output dataset/div2k/processed \
+  --raw-output dataset/div2k/inputs \
+  --processed-output dataset/div2k/targets \
   --operator pencil
 ```
 
