@@ -1,0 +1,11 @@
+[project]
+name = "fast-image-processing-fcn"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "datasets[vision]>=5.0.0",
+    "opencv-python>=4.13.0.92",
+    "torch>=2.12.0",
+]
