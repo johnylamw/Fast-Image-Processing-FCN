@@ -219,3 +219,9 @@ __marimo__/
 
 fivek_data/
 .DS_STORE
+
+# Datasets (downloaded / generated data, not source)
+dataset/adobe5k_kaggle/
+dataset/adobe5k_processed/
+dataset/div2k/
+*.zip
