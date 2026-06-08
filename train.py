@@ -8,11 +8,13 @@ from model import CAN24AN, CAN32, CAN32AN, CAN32BN
 
 import argparse
 import os
+import random
 
 torch_device = "cuda" if torch.cuda.is_available() else "cpu"
 
 SEED = 42
-MODEL_OUTPUT_DIR = "runs"
+MODEL_OUTPUT_DIR = "model_runs"
+SPLITS_DIR = "data_splits"
 MODEL_VARIANTS = {
     "CAN24+AN": CAN24AN,
     "CAN32": CAN32,
@@ -29,7 +31,7 @@ def train(model,
     train_loader,
     total_iterations=500_000,
     model_output_dir=MODEL_OUTPUT_DIR,
-    split_indices=None,
+    split_manifest=None
 ):
     print(f"Training the model for {total_iterations} iterations")
     model.train()
@@ -50,49 +52,76 @@ def train(model,
         # Save checkpoint every 10k iterations
         if iteration % 10_000 == 0:
             checkpoint_path = os.path.join(model_output_dir, f"{args.model}_{iteration}.pt")
-            save_model(checkpoint_path, model, optimizer, iteration, split_indices)
+            save_model(checkpoint_path, model, optimizer, iteration, split_manifest)
 
-def save_model(path, model, optimizer, iteration, split_indices=None):
+def save_model(path, model, optimizer, iteration, split_manifest=None):
     torch.save(
         {
             "iteration": iteration,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
-            "split_indices": split_indices,
+            "split_manifest": split_manifest,
         },
         path
     )
 
-def make_or_load_split(dataset, model_output_dir=MODEL_OUTPUT_DIR, train_fraction=0.5):
-    os.makedirs(model_output_dir, exist_ok=True)
-    split_path = os.path.join(model_output_dir, f"{args.model}_SPLIT_INDICES.pt")
+def make_or_load_split(dataset, split_dir, train_fraction=0.5):
+    os.makedirs(split_dir, exist_ok=True)
+    train_manifest_path = os.path.join(split_dir, "train_manifest.txt")
+    test_manifest_path = os.path.join(split_dir, "test_manifest.txt")
+    basename_to_index = {
+        input_path.stem: index
+        for index, (input_path, _) in enumerate(dataset.pairs)
+    }
 
-    # loads the splits if it exists for evaluation
-    if os.path.exists(split_path):
-        split = torch.load(split_path, map_location="cpu")
-        if split["dataset_size"] != len(dataset):
-            raise ValueError(f"Saved split expects {split['dataset_size']} images but dataset has {len(dataset)} images.")
-        train_set = Subset(dataset, split["train_indices"])
-        test_set = Subset(dataset, split["test_indices"])
-        return train_set, test_set, split
+    if os.path.exists(train_manifest_path) and os.path.exists(test_manifest_path):
+        train_basenames = read_manifest(train_manifest_path)
+        test_basenames = read_manifest(test_manifest_path)
+    else:
+        basenames = list(basename_to_index)
+        random.Random(SEED).shuffle(basenames)
+        train_size = int(len(basenames) * train_fraction)
+        train_basenames = basenames[:train_size]
+        test_basenames = basenames[train_size:]
+        write_manifest(train_manifest_path, train_basenames)
+        write_manifest(test_manifest_path, test_basenames)
 
-    train_size = int(len(dataset) * train_fraction)
-    test_size = len(dataset) - train_size
-    generator = torch.Generator().manual_seed(SEED)
-    train_set, test_set = torch.utils.data.random_split(
-        dataset,
-        [train_size, test_size],
-        generator=generator,
-    )
     split = {
         "dataset_size": len(dataset),
         "seed": SEED,
         "train_fraction": train_fraction,
-        "train_indices": train_set.indices,
-        "test_indices": test_set.indices,
+        "train_manifest": train_manifest_path,
+        "test_manifest": test_manifest_path,
+        "train_basenames": train_basenames,
+        "test_basenames": test_basenames,
     }
-    torch.save(split, split_path)
+
+    train_indices = manifest_to_indices(train_basenames, basename_to_index)
+    test_indices = manifest_to_indices(test_basenames, basename_to_index)
+    train_set = Subset(dataset, train_indices)
+    test_set = Subset(dataset, test_indices)
     return train_set, test_set, split
+
+
+# read the train_test split manifest
+def read_manifest(path):
+    with open(path, "r") as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+# write the train/test split manifest for reproducability + evaluation later
+def write_manifest(path, basenames):
+    with open(path, "w") as f:
+        for basename in basenames:
+            f.write(f"{basename}\n")
+
+
+def manifest_to_indices(basenames, basename_to_index):
+    missing = [basename for basename in basenames if basename not in basename_to_index]
+    if missing:
+        preview = ", ".join(missing[:5])
+        raise ValueError(f"Manifest contains missing dataset items: {preview} (first 5 are shown)")
+    return [basename_to_index[basename] for basename in basenames]
 
 
 def parse_args():
@@ -101,7 +130,13 @@ def parse_args():
     parser.add_argument("--model", choices=MODEL_VARIANTS.keys(), default="CAN24+AN")
     parser.add_argument("--iterations", default=500_000, type=int)
     parser.add_argument("--outputs", default=MODEL_OUTPUT_DIR)
+    parser.add_argument("--splits", default=SPLITS_DIR)
     return parser.parse_args()
+
+
+def dataset_split_dir(splits_dir, dataset_path):
+    dataset_name = os.path.basename(os.path.normpath(dataset_path))
+    return os.path.join(splits_dir, dataset_name)
 
 
 if __name__ == "__main__":
@@ -116,11 +151,12 @@ if __name__ == "__main__":
 
     args = parse_args()
     checkpoint_dir = os.path.join(args.outputs, args.model)
+    split_dir = dataset_split_dir(args.splits, args.dataset)
 
     total_iterations = args.iterations
     random_tensor_transform = PairedRandomResizeToTensor()
     dataset = ImageOperatorDataset(args.dataset, transform=random_tensor_transform)
-    train_set, test_set, split_indices = make_or_load_split(dataset, checkpoint_dir)
+    train_set, test_set, split_manifest = make_or_load_split(dataset, split_dir)
     sampler = RandomSampler(train_set, replacement=True, num_samples=total_iterations)
     dataloader = DataLoader(
         train_set,
@@ -144,9 +180,8 @@ if __name__ == "__main__":
         dataloader,
         total_iterations=total_iterations,
         model_output_dir=checkpoint_dir,
-        split_indices=split_indices,
+        split_manifest=split_manifest
     )
 
     final_model_path = os.path.join(checkpoint_dir, f"{args.model}_{total_iterations}_FINAL.pt")
-    save_model(final_model_path, model, optimizer, total_iterations, split_indices)
-
+    save_model(final_model_path, model, optimizer, total_iterations, split_manifest)
