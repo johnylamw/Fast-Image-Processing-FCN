@@ -8,7 +8,7 @@ from model import CAN32
 
 import os
 
-torch_device = "cpu"
+torch_device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 # TODO: we can add valid_loader if we hyperparameter tuning. original paper does not.
@@ -33,11 +33,10 @@ def train(model, optimizer, loss_fn, train_loader, total_iterations=500_000):
         loss.backward()
         optimizer.step()
         
-        print(f"Iteration {iteration}/{total_iterations}, loss={loss.item():.6f}")
-        iteration += 1
-        
-        if iteration % 1000 == 0:
+        if iteration % 100 == 0:
             print(f"Iteration {iteration}/{total_iterations}, loss={loss.item():.6f}")
+
+        if iteration % 1000 == 0:
             os.makedirs("checkpoint", exist_ok=True)
             torch.save(model.state_dict(), f"./checkpoint/model_iter_{iteration}.pt")
 
@@ -58,7 +57,7 @@ if __name__ == "__main__":
 
     total_iterations = 500_000
     random_tensor_transform = PairedRandomResizeToTensor()
-    dataset = ImageOperatorDataset("datasets/adobe5k_processed", transform=random_tensor_transform)
+    dataset = ImageOperatorDataset("dataset/adobe5k_processed", transform=random_tensor_transform)
     sampler = RandomSampler(dataset, replacement=True, num_samples=total_iterations)
     
     dataloader = DataLoader(

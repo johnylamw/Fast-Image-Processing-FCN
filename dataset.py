@@ -8,8 +8,8 @@ import torchvision.transforms.functional as F
 class ImageOperatorDataset(Dataset):
     def __init__(self, dataset_dir, transform=None):
         if os.path.exists(dataset_dir):
-            input_dir = os.path.join(dataset_dir, "inputs")
-            target_dir = os.path.join(dataset_dir, "targets")
+            input_dir = os.path.join(dataset_dir, "raw")
+            target_dir = os.path.join(dataset_dir, "processed")
             if not os.path.exists(input_dir):
                 raise FileNotFoundError(f"Input Image Directory {input_dir} does not exist")
             if not os.path.exists(target_dir):
