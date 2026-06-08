@@ -1,4 +1,4 @@
-#### Downloading the Adobe5k Dataset
+#### Downloading the Raw Adobe5k Dataset
 
 Download all 5,000 MIT-Adobe FiveK images with expert variant A, without
 restricting to only train, validation, or test:
@@ -44,23 +44,22 @@ The processe target files are named like:
 <image_name>_pencil.png
 ```
 
+---
+# ALTERNATIVE: Download jpg compressed Adobe5k here
+https://www.kaggle.com/datasets/weipengzhang/adobe-fivek
 
 ---
-#### Other Variants (i.e. div2k):
-Div2k can be extracted to `dataset/div2k/inputs`
-and can be processed via:
+### Adobe5k w/o the raws or tifs + other variants (i.e., div2k)
 ```
 uv run python data_preparation.py \
   --skip-tif-conversion \
-  --raw-output dataset/div2k/inputs \
-  --processed-output dataset/div2k/targets \
+  --raw-output datasets/adobe5kA/inputs \
+  --processed-output datasets/adobe5kA/targets \
   --operator pencil
-```
-
+  ```
 
 
 ---
-
 Useful Commands:
 
 ```

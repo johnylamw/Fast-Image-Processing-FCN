@@ -59,11 +59,11 @@ class CAN32(nn.Module):
 class AdaptiveBatchNorm2D(nn.Module):
     # lambda_s * x + mu_s * BN(X)
     # where lamba_s and mu_s are learnable parameters
-    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True):
+    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=False):
         super(AdaptiveBatchNorm2D, self).__init__()
         self.bn = nn.BatchNorm2d(num_features, eps, momentum, affine)
         self.lambda_ = nn.Parameter(torch.ones(1))
-        self.mu = nn.Parameter(torch.ones(1))
+        self.mu = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
         return self.lambda_ * x + self.mu * self.bn(x)

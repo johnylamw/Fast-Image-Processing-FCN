@@ -1,33 +1,59 @@
 from torch.utils.data import Dataset
 from PIL import Image
-import os
 
 import random
 import torchvision.transforms.functional as F
 
+from pathlib import Path
+
 class ImageOperatorDataset(Dataset):
-    def __init__(self, dataset_dir, transform=None):
-        if os.path.exists(dataset_dir):
-            input_dir = os.path.join(dataset_dir, "inputs")
-            target_dir = os.path.join(dataset_dir, "targets")
-            if not os.path.exists(input_dir):
-                raise FileNotFoundError(f"Input Image Directory {input_dir} does not exist")
-            if not os.path.exists(target_dir):
-                raise FileNotFoundError(f"Target (Image Operator) Directory {target_dir} does not exist")
-            
-            self.input_paths = sorted([os.path.join(input_dir, file) for file in os.listdir(input_dir)])
-            self.target_paths = sorted([os.path.join(target_dir, file) for file in os.listdir(target_dir)])
-        else:
-            raise FileNotFoundError(f"Dataset Directory {dataset_dir} does not exist")
-        
+    def __init__(self, dataset_dir, transform=None, operator_suffix="_pencil"):
+        dataset_dir = Path(dataset_dir)
+        input_dir = dataset_dir / "inputs"
+        target_dir = dataset_dir / "targets"
+        if not input_dir.exists():
+            raise FileNotFoundError(f"Input Image Directory {input_dir} does not exist")
+        if not target_dir.exists():
+            raise FileNotFoundError(f"Target (Image Operator) Directory {target_dir} does not exist")
+
+        image_extensions = {".jpg", ".jpeg", ".png"}
+        input_paths = sorted(
+            path for path in input_dir.iterdir()
+            if path.suffix.lower() in image_extensions
+        )
+        # pairs inputs -> targets
+        # note: stem retrieves just the filename
+        # ex: img01 : "./datasets/img01_pencil.png"
+        target_by_stem = {
+            target.stem.removesuffix(operator_suffix): target
+            for target in target_dir.iterdir()
+            if target.suffix.lower() in image_extensions
+        }
+
+        # check + create absolute pairs
+        pairs = []
+        missing_targets = []
+        for input_path in input_paths:
+            target_path = target_by_stem.get(input_path.stem)
+            if target_path is None:
+                missing_targets.append(input_path.name)
+                continue
+            pairs.append((input_path, target_path))
+
+        if missing_targets:
+            preview = ", ".join(missing_targets[:5])
+            raise FileNotFoundError(f"Missing targets for {preview} (first 5 is shown)")
+
+        self.pairs = pairs
         self.transform = transform
         
     def __len__(self):
-        return len(self.input_paths)
+        return len(self.pairs)
 
     def __getitem__(self, index):
-        img = Image.open(self.input_paths[index]).convert("RGB")
-        target = Image.open(self.target_paths[index]).convert("RGB")
+        input_path, target_path = self.pairs[index]
+        img = Image.open(input_path).convert("RGB")
+        target = Image.open(target_path).convert("RGB")
 
         if self.transform:
             img, target = self.transform(img, target)
@@ -52,5 +78,5 @@ class PairedRandomResizeToTensor:
         return F.to_tensor(img), F.to_tensor(target)
 
 if __name__ == "__main__":
-    # test = ImageOperatorDataset("dataset/div2k", transform=None)
+    test = ImageOperatorDataset("datasets/div2k", transform=None)
     pass
