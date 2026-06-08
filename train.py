@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     total_iterations = 500_000
     random_tensor_transform = PairedRandomResizeToTensor()
-    dataset = ImageOperatorDataset("datasets/div2k", transform=random_tensor_transform)
+    dataset = ImageOperatorDataset("datasets/adobe5kA", transform=random_tensor_transform)
     train_set, test_set, split_indices = make_or_load_split(dataset, CHECKPOINT_DIR)
     sampler = RandomSampler(train_set, replacement=True, num_samples=total_iterations)
     dataloader = DataLoader(
