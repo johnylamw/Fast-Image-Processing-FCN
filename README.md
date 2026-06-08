@@ -75,5 +75,14 @@ uv run train.py \
 --dataset datasets/adobe5kA \
 --model CAN24+AN \
 --iterations 500_000 \
---output runs
+--output model_runs \
+--splits data_splits
+```
+
+Minimal-ish
+```
+uv run train.py \
+--dataset datasets/adobe5kA \
+--model CAN24+AN \
+--iterations 500_000 
 ```
