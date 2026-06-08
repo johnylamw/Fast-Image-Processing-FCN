@@ -7,8 +7,10 @@ from torch.utils.data import DataLoader, RandomSampler, Subset
 from model import CAN24AN, CAN32, CAN32AN, CAN32BN
 
 import argparse
+import csv
 import os
 import random
+import time
 
 torch_device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -36,23 +38,74 @@ def train(model,
     print(f"Training the model for {total_iterations} iterations")
     model.train()
     os.makedirs(model_output_dir, exist_ok=True)
+    run_name = os.path.basename(os.path.normpath(model_output_dir))
+    log_path = os.path.join(model_output_dir, f"{run_name}_train_log.csv")
+    log_exists = os.path.exists(log_path)
+    train_start_time = time.perf_counter()
+
+    log_file = open(log_path, "a", newline="")
+    log_writer = csv.DictWriter(
+        log_file,
+        fieldnames=[
+            "iteration",
+            "loss",
+            "elapsed_seconds",
+            "seconds_per_iter",
+            "batch_size",
+            "height",
+            "width",
+            "pixels",
+            "pixels_per_sec",
+        ],
+    )
+    if not log_exists:
+        log_writer.writeheader()
     
     # loop until total_iteraitons is met
-    for iteration, (X_batch, y_batch) in enumerate(train_loader, start=1):
-        X_batch, y_batch = X_batch.to(torch_device), y_batch.to(torch_device)
-        optimizer.zero_grad()
-        y_pred = model(X_batch)
-        loss = loss_fn(y_pred, y_batch)
-        
-        loss.backward()
-        optimizer.step()
-        
-        print(f"Iteration {iteration}/{total_iterations}, loss={loss.item():.6f}")
-        
-        # Save checkpoint every 10k iterations
-        if iteration % 10_000 == 0:
-            checkpoint_path = os.path.join(model_output_dir, f"{args.model}_{iteration}.pt")
-            save_model(checkpoint_path, model, optimizer, iteration, split_manifest)
+    try:
+        for iteration, (X_batch, y_batch) in enumerate(train_loader, start=1):
+            if torch_device == "cuda":
+                torch.cuda.synchronize()
+            start_time = time.perf_counter()
+            X_batch, y_batch = X_batch.to(torch_device), y_batch.to(torch_device)
+            optimizer.zero_grad()
+            y_pred = model(X_batch)
+            loss = loss_fn(y_pred, y_batch)
+            
+            loss.backward()
+            optimizer.step()
+            if torch_device == "cuda":
+                torch.cuda.synchronize()
+            seconds_per_iter = time.perf_counter() - start_time
+            elapsed_seconds = time.perf_counter() - train_start_time
+
+            batch_size = X_batch.shape[0]
+            height = X_batch.shape[2]
+            width = X_batch.shape[3]
+            pixels = batch_size * height * width
+            
+            print(f"Iteration {iteration}/{total_iterations}, loss={loss.item():.6f}")
+            log_writer.writerow(
+                {
+                    "iteration": iteration,
+                    "loss": loss.item(),
+                    "elapsed_seconds": elapsed_seconds,
+                    "seconds_per_iter": seconds_per_iter,
+                    "batch_size": batch_size,
+                    "height": height,
+                    "width": width,
+                    "pixels": pixels,
+                    "pixels_per_sec": pixels / seconds_per_iter,
+                }
+            )
+            log_file.flush()
+            
+            # Save checkpoint every 10k iterations
+            if iteration % 10_000 == 0:
+                checkpoint_path = os.path.join(model_output_dir, f"{run_name}_iter_{iteration}.pt")
+                save_model(checkpoint_path, model, optimizer, iteration, split_manifest)
+    finally:
+        log_file.close()
 
 def save_model(path, model, optimizer, iteration, split_manifest=None):
     torch.save(
@@ -135,8 +188,15 @@ def parse_args():
 
 
 def dataset_split_dir(splits_dir, dataset_path):
-    dataset_name = os.path.basename(os.path.normpath(dataset_path))
-    return os.path.join(splits_dir, dataset_name)
+    return os.path.join(splits_dir, dataset_name(dataset_path))
+
+
+def dataset_name(dataset_path):
+    return os.path.basename(os.path.normpath(dataset_path))
+
+
+def dataset_model_output_dir(outputs_dir, dataset_path, model_name):
+    return os.path.join(outputs_dir, dataset_name(dataset_path), model_name)
 
 
 if __name__ == "__main__":
@@ -150,7 +210,7 @@ if __name__ == "__main__":
     """
 
     args = parse_args()
-    checkpoint_dir = os.path.join(args.outputs, args.model)
+    checkpoint_dir = dataset_model_output_dir(args.outputs, args.dataset, args.model)
     split_dir = dataset_split_dir(args.splits, args.dataset)
 
     total_iterations = args.iterations
@@ -183,5 +243,6 @@ if __name__ == "__main__":
         split_manifest=split_manifest
     )
 
-    final_model_path = os.path.join(checkpoint_dir, f"{args.model}_{total_iterations}_FINAL.pt")
+    run_name = os.path.basename(os.path.normpath(checkpoint_dir))
+    final_model_path = os.path.join(checkpoint_dir, f"{run_name}_final.pt")
     save_model(final_model_path, model, optimizer, total_iterations, split_manifest)
