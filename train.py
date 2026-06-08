@@ -8,7 +8,7 @@ from model import CAN32
 
 import os
 
-torch_device = "cuda"
+torch_device = "cuda" if torch.cuda.is_available() else "cpu"
 
 SEED = 42
 CHECKPOINT_DIR = "checkpoint"
@@ -101,9 +101,8 @@ if __name__ == "__main__":
 
     total_iterations = 500_000
     random_tensor_transform = PairedRandomResizeToTensor()
-    dataset = ImageOperatorDataset("datasets/adobe5kA", transform=random_tensor_transform)
-    train_set, test_set, split_indices = make_or_load_split(dataset, CHECKPOINT_DIR)
-    sampler = RandomSampler(train_set, replacement=True, num_samples=total_iterations)
+    dataset = ImageOperatorDataset("datasets/adobe5k_processed", transform=random_tensor_transform)
+    sampler = RandomSampler(dataset, replacement=True, num_samples=total_iterations)
     
     dataloader = DataLoader(
         train_set,
