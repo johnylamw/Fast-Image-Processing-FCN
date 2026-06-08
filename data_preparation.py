@@ -128,12 +128,12 @@ def parse_args():
     )
     parser.add_argument(
         "--raw-output",
-        default="dataset/adobe5k_processed/raw",
+        default="datasets/adobe5k_processed/raw",
         help="Directory where converted PNG images are written.",
     )
     parser.add_argument(
         "--processed-output",
-        default="dataset/adobe5k_processed/processed",
+        default="datasets/adobe5k_processed/processed",
         help="Directory where processed PNG images are written.",
     )
     parser.add_argument(

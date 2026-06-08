@@ -99,17 +99,17 @@ if __name__ == "__main__":
     - ~ 1 day of training on Nvidia Titan
     """
 
-    total_iterations = 500_000
+    total_iterations = 3
     random_tensor_transform = PairedRandomResizeToTensor()
-    dataset = ImageOperatorDataset("datasets/adobe5k_processed", transform=random_tensor_transform)
+    dataset = ImageOperatorDataset("datasets/adobe5kA", transform=random_tensor_transform)
     train_set, test_set, split_indices = make_or_load_split(dataset, CHECKPOINT_DIR)
-    sampler = RandomSampler(dataset, replacement=True, num_samples=total_iterations)
+    sampler = RandomSampler(train_set, replacement=True, num_samples=total_iterations)
     dataloader = DataLoader(
         train_set,
         batch_size=1,
         sampler=sampler,
         num_workers=4,
-        pin_memory=True
+        pin_memory=torch_device == "cuda"
     )
 
     print("Dataset loaded into dataloader!")
