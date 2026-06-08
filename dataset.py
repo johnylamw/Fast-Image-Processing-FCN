@@ -77,6 +77,25 @@ class PairedRandomResizeToTensor:
         target = F.resize(target, target_res)
         return F.to_tensor(img), F.to_tensor(target)
 
+class PairedFixedResizeToTensor:
+    """
+    Converts both input/target image pair to Tensor without explicit resizing
+    """
+    def __init__(self, res=640):
+        self.res = res
+
+    def __call__(self, img, target):
+        img = F.resize(img, self.res)
+        target = F.resize(target, self.res)
+        return F.to_tensor(img), F.to_tensor(target)
+
+class PairedToTensor:
+    """
+    Converts both input/target image pair to Tensor without explicit resizing
+    """
+    def __call__(self, img, target):
+        return F.to_tensor(img), F.to_tensor(target)
+
 if __name__ == "__main__":
-    # test = ImageOperatorDataset("datasets/div2k", transform=None)
+    test = ImageOperatorDataset("datasets/div2k", transform=None)
     pass
