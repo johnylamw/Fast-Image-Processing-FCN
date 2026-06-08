@@ -97,5 +97,5 @@ class PairedToTensor:
         return F.to_tensor(img), F.to_tensor(target)
 
 if __name__ == "__main__":
-    test = ImageOperatorDataset("datasets/div2k", transform=None)
+    # test = ImageOperatorDataset("datasets/div2k", transform=None)
     pass
