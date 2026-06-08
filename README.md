@@ -67,3 +67,13 @@ uv run python data_preparation.py --help
 uv run python data_preparation.py --skip-tif-conversion
 uv run python data_preparation.py --skip-processing
 ```
+
+---
+# Model Training
+```
+uv run train.py \
+--dataset datasets/adobe5kA \
+--model CAN24+AN \
+--iterations 500_000 \
+--output runs
+```

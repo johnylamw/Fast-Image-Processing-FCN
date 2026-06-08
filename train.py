@@ -4,15 +4,21 @@ import torch.nn as nn
 from dataset import ImageOperatorDataset, PairedRandomResizeToTensor
 from torch.utils.data import DataLoader, RandomSampler, Subset
 
-from model import CAN32
+from model import CAN24AN, CAN32, CAN32AN, CAN32BN
 
+import argparse
 import os
 
 torch_device = "cuda" if torch.cuda.is_available() else "cpu"
 
 SEED = 42
-CHECKPOINT_DIR = "checkpoint"
-SPLIT_FILENAME = "split_indices.pt"
+MODEL_OUTPUT_DIR = "runs"
+MODEL_VARIANTS = {
+    "CAN24+AN": CAN24AN,
+    "CAN32": CAN32,
+    "CAN32+AN": CAN32AN,
+    "CAN32+BN": CAN32BN,
+}
 
 # TODO: we can add valid_loader if we hyperparameter tuning. original paper does not.
 # can add metrics and valid_loader?
@@ -22,12 +28,12 @@ def train(model,
     loss_fn,
     train_loader,
     total_iterations=500_000,
-    checkpoint_dir=CHECKPOINT_DIR,
+    model_output_dir=MODEL_OUTPUT_DIR,
     split_indices=None,
 ):
     print(f"Training the model for {total_iterations} iterations")
     model.train()
-    os.makedirs(checkpoint_dir, exist_ok=True)
+    os.makedirs(model_output_dir, exist_ok=True)
     
     # loop until total_iteraitons is met
     for iteration, (X_batch, y_batch) in enumerate(train_loader, start=1):
@@ -42,11 +48,11 @@ def train(model,
         print(f"Iteration {iteration}/{total_iterations}, loss={loss.item():.6f}")
         
         # Save checkpoint every 10k iterations
-        if iteration % 10000 == 0:
-            checkpoint_path = os.path.join(checkpoint_dir, f"model_iter_{iteration}.pt")
-            save_checkpoint(checkpoint_path, model, optimizer, iteration, split_indices)
+        if iteration % 10_000 == 0:
+            checkpoint_path = os.path.join(model_output_dir, f"{args.model}_{iteration}.pt")
+            save_model(checkpoint_path, model, optimizer, iteration, split_indices)
 
-def save_checkpoint(path, model, optimizer, iteration, split_indices=None):
+def save_model(path, model, optimizer, iteration, split_indices=None):
     torch.save(
         {
             "iteration": iteration,
@@ -57,9 +63,9 @@ def save_checkpoint(path, model, optimizer, iteration, split_indices=None):
         path
     )
 
-def make_or_load_split(dataset, checkpoint_dir=CHECKPOINT_DIR, train_fraction=0.5):
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    split_path = os.path.join(checkpoint_dir, SPLIT_FILENAME)
+def make_or_load_split(dataset, model_output_dir=MODEL_OUTPUT_DIR, train_fraction=0.5):
+    os.makedirs(model_output_dir, exist_ok=True)
+    split_path = os.path.join(model_output_dir, f"{args.model}_SPLIT_INDICES.pt")
 
     # loads the splits if it exists for evaluation
     if os.path.exists(split_path):
@@ -89,6 +95,15 @@ def make_or_load_split(dataset, checkpoint_dir=CHECKPOINT_DIR, train_fraction=0.
     return train_set, test_set, split
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", default="datasets/adobe5kA")
+    parser.add_argument("--model", choices=MODEL_VARIANTS.keys(), default="CAN24+AN")
+    parser.add_argument("--iterations", default=500_000, type=int)
+    parser.add_argument("--outputs", default=MODEL_OUTPUT_DIR)
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
     """
     NOTES:
@@ -99,10 +114,13 @@ if __name__ == "__main__":
     - ~ 1 day of training on Nvidia Titan
     """
 
-    total_iterations = 500_000
+    args = parse_args()
+    checkpoint_dir = os.path.join(args.outputs, args.model)
+
+    total_iterations = args.iterations
     random_tensor_transform = PairedRandomResizeToTensor()
-    dataset = ImageOperatorDataset("datasets/adobe5kA", transform=random_tensor_transform)
-    train_set, test_set, split_indices = make_or_load_split(dataset, CHECKPOINT_DIR)
+    dataset = ImageOperatorDataset(args.dataset, transform=random_tensor_transform)
+    train_set, test_set, split_indices = make_or_load_split(dataset, checkpoint_dir)
     sampler = RandomSampler(train_set, replacement=True, num_samples=total_iterations)
     dataloader = DataLoader(
         train_set,
@@ -115,7 +133,7 @@ if __name__ == "__main__":
     print("Dataset loaded into dataloader!")
 
     # TODO: no hyperparameter tuning atm
-    model = CAN32().to(torch_device)
+    model = MODEL_VARIANTS[args.model]().to(torch_device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     loss = nn.MSELoss()
 
@@ -125,6 +143,10 @@ if __name__ == "__main__":
         loss,
         dataloader,
         total_iterations=total_iterations,
-        checkpoint_dir=CHECKPOINT_DIR,
+        model_output_dir=checkpoint_dir,
         split_indices=split_indices,
     )
+
+    final_model_path = os.path.join(checkpoint_dir, f"{args.model}_{total_iterations}_FINAL.pt")
+    save_model(final_model_path, model, optimizer, total_iterations, split_indices)
+

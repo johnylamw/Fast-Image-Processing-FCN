@@ -1,3 +1,10 @@
+# Local
+datasets/
+tmate
+
+# Torch
+*.pt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
