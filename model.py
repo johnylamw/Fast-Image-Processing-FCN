@@ -4,7 +4,7 @@ from torchvision.ops import DeformConv2d
 
 class CAN(nn.Module):
     # norm_type = ["adaptive", "batch", "none"]
-    def __init__(self, depth=10, width=32, norm_type="adaptive"):
+    def __init__(self, depth=10, width=32, norm_type="adaptive", use_deformconv=False):
         super().__init__()
         self.depth = depth
         self.width = width
@@ -26,7 +26,7 @@ class CAN(nn.Module):
         # Layers #2 to #D - 2 (dilation scales by 2)
         self.hidden_convs = nn.ModuleList()
         self.hidden_norms = nn.ModuleList()
-        if use_deform_conv:
+        if use_deformconv:
             self.offset_convs = nn.ModuleList()
             for _ in range(depth - 3):
                 self.offset_convs.append(nn.Conv2d(in_channels=width, out_channels=18, kernel_size=3, padding=1))
@@ -68,7 +68,7 @@ class CAN(nn.Module):
 
 
         # Layer 2 to D-2
-        if self.use_deform_conv:
+        if self.use_deformconv:
             for offset_conv, conv, norm in zip(self.offset_convs, self.hidden_convs, self.hidden_norms):
                 offset = offset_conv(x)
                 x = conv(x, offset)
