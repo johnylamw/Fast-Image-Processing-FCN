@@ -81,7 +81,11 @@ class CAN(nn.Module):
                 x = self.activation(x)
 
         # Layer D-1
-        x = self.layer_d_minus_1(x)
+        if self.use_deform_conv:
+            offset = self.offset_d_minus_1(x)
+            x = self.layer_d_minus_1(x, offset)
+        else:
+            x = self.layer_d_minus_1(x)
         x = self.norm_d_minus_1(x)
         x = self.activation(x)
 
