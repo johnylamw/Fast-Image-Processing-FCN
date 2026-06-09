@@ -232,3 +232,7 @@ dataset/adobe5k_kaggle/
 dataset/adobe5k_processed/
 dataset/div2k/
 *.zip
+
+# Model checkpoints / training run outputs (not source)
+model_runs/
+checkpoint/
