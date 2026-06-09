@@ -4,7 +4,7 @@ import torch.nn as nn
 from dataset import ImageOperatorDataset, PairedRandomResizeToTensor
 from torch.utils.data import DataLoader, RandomSampler, Subset
 
-from model import CAN24AN, CAN32, CAN32AN, CAN32BN
+from model import CAN24AN, CAN24AND, CAN32AND, CAN32, CAN32AN, CAN32BN
 
 import argparse
 import csv
@@ -19,8 +19,10 @@ MODEL_OUTPUT_DIR = "model_runs"
 SPLITS_DIR = "data_splits"
 MODEL_VARIANTS = {
     "CAN24+AN": CAN24AN,
+    "CAN24+AND": CAN24AND,
     "CAN32": CAN32,
     "CAN32+AN": CAN32AN,
+    "CAN32+AND": CAN32AND,
     "CAN32+BN": CAN32BN,
 }
 

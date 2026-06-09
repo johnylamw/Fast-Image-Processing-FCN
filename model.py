@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch
+from torchvision.ops import DeformConv2d
 
 class CAN(nn.Module):
     # norm_type = ["adaptive", "batch", "none"]
@@ -8,6 +9,7 @@ class CAN(nn.Module):
         self.depth = depth
         self.width = width
         self.norm_type = norm_type
+        self.use_deformconv = use_deformconv
 
         # NOTE:
         # CAN32 network as described on pg. 13
@@ -24,14 +26,25 @@ class CAN(nn.Module):
         # Layers #2 to #D - 2 (dilation scales by 2)
         self.hidden_convs = nn.ModuleList()
         self.hidden_norms = nn.ModuleList()
-        for _ in range(depth - 3):
-            dilation *= 2
-            self.hidden_convs.append(nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, dilation=dilation, padding=dilation))
-            self.hidden_norms.append(self._make_norm(width, norm_type))
+        if use_deform_conv:
+            self.offset_convs = nn.ModuleList()
+            for _ in range(depth - 3):
+                self.offset_convs.append(nn.Conv2d(in_channels=width, out_channels=18, kernel_size=3, padding=1))
+                self.hidden_convs.append(DeformConv2d(in_channels=width, out_channels=width, kernel_size=3, padding=1))
+                self.hidden_norms.append(self._make_norm(width, norm_type))
+
+            # Layer # D - 1 (second to last) <- dilation=1
+            self.offset_d_minus_1 = nn.Conv2d(in_channels=width, out_channels=18, kernel_size=3, padding=1)
+            self.layer_d_minus_1 = DeformConv2d(in_channels=width, out_channels=width, kernel_size=3, padding=1)
+        else:
+            for _ in range(depth - 3):
+                dilation *= 2
+                self.hidden_convs.append(nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, dilation=dilation, padding=dilation))
+                self.hidden_norms.append(self._make_norm(width, norm_type))
         
-        # Layer # D - 1 (second to last) <- dilation=1
-        self.layer_d_minus_1 = nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, dilation=1, padding=1)
-        self.norm_d_minus_1 = self._make_norm(width, norm_type)
+            # Layer # D - 1 (second to last) <- dilation=1
+            self.layer_d_minus_1 = nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, dilation=1, padding=1)
+            self.norm_d_minus_1 = self._make_norm(width, norm_type)
 
         # Layer #10) output
         self.output = nn.Conv2d(in_channels=width, out_channels=3, kernel_size=1, dilation=1)
@@ -53,11 +66,19 @@ class CAN(nn.Module):
         x = self.norm1(x)
         x = self.activation(x)
 
+
         # Layer 2 to D-2
-        for conv, norm in zip(self.hidden_convs, self.hidden_norms):
-            x = conv(x)
-            x = norm(x)
-            x = self.activation(x)
+        if self.use_deform_conv:
+            for offset_conv, conv, norm in zip(self.offset_convs, self.hidden_convs, self.hidden_norms):
+                offset = offset_conv(x)
+                x = conv(x, offset)
+                x = norm(x)
+                x = self.activation(x)
+        else:
+            for conv, norm in zip(self.hidden_convs, self.hidden_norms):
+                x = conv(x)
+                x = norm(x)
+                x = self.activation(x)
 
         # Layer D-1
         x = self.layer_d_minus_1(x)
@@ -69,19 +90,27 @@ class CAN(nn.Module):
 
 class CAN24AN(CAN):
     def __init__(self):
-        super().__init__(depth=9, width=24, norm_type="adaptive")
+        super().__init__(depth=9, width=24, norm_type="adaptive", use_deformconv=False)
 
 class CAN32AN(CAN):
     def __init__(self):
-        super().__init__(depth=10, width=32, norm_type="adaptive")
+        super().__init__(depth=10, width=32, norm_type="adaptive", use_deformconv=False)
+
+class CAN24AND(CAN):
+    def __init__(self):
+        super().__init__(depth=9, width=24, norm_type="adaptive", use_deformconv=True)
+
+class CAN32AND(CAN):
+    def __init__(self):
+        super().__init__(depth=10, width=32, norm_type="adaptive", use_deformconv=True)
 
 class CAN32(CAN):
     def __init__(self):
-        super().__init__(depth=10, width=32, norm_type="none")
+        super().__init__(depth=10, width=32, norm_type="none", use_deformconv=False)
 
 class CAN32BN(CAN):
     def __init__(self):
-        super().__init__(depth=10, width=32, norm_type="batch")
+        super().__init__(depth=10, width=32, norm_type="batch", use_deformconv=False)
 
 class AdaptiveBatchNorm2D(nn.Module):
     # lambda_s * x + mu_s * BN(X)
