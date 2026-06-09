@@ -44,7 +44,7 @@ class CAN(nn.Module):
         
             # Layer # D - 1 (second to last) <- dilation=1
             self.layer_d_minus_1 = nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, dilation=1, padding=1)
-            self.norm_d_minus_1 = self._make_norm(width, norm_type)
+        self.norm_d_minus_1 = self._make_norm(width, norm_type)
 
         # Layer #10) output
         self.output = nn.Conv2d(in_channels=width, out_channels=3, kernel_size=1, dilation=1)
