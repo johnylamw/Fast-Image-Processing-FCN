@@ -66,13 +66,25 @@ class PairedRandomResizeToTensor:
     Apply the same random resize to an input/target image pair, then convert both
     images to tensors.
     """
-    # paper uses 320-1440 for Adobe5k and Raise -> change for other datasets
-    def __init__(self, min_res=320, max_res=1440):
+    # paper uses 320-1440 for Adobe5k and Raise -> change for other datasets.
+    # max_pixels caps the resized area (short*long) per sample so extreme
+    # aspect-ratio images (e.g. DIV2K panoramas) don't OOM the GPU at batch=1.
+    # F.resize(int) sets the SHORTER side, so resized pixels = res^2 * AR; we
+    # shrink the effective res only when that would exceed max_pixels. With a
+    # cap above a dataset's worst case it is a no-op (so Adobe/Flickr2K are
+    # unaffected). None disables the cap (original behaviour).
+    def __init__(self, min_res=320, max_res=1440, max_pixels=None):
         self.min_res = min_res
         self.max_res = max_res
+        self.max_pixels = max_pixels
 
     def __call__(self, img, target):
         target_res = random.randint(self.min_res, self.max_res)
+        if self.max_pixels is not None:
+            width, height = img.size
+            aspect_ratio = max(width, height) / min(width, height)
+            max_short = int((self.max_pixels / aspect_ratio) ** 0.5)
+            target_res = min(target_res, max(self.min_res, max_short))
         img = F.resize(img, target_res)
         target = F.resize(target, target_res)
         return F.to_tensor(img), F.to_tensor(target)

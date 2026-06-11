@@ -10,6 +10,7 @@ import argparse
 import csv
 import os
 import random
+import re
 import time
 
 torch_device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -35,9 +36,13 @@ def train(model,
     train_loader,
     total_iterations=500_000,
     model_output_dir=MODEL_OUTPUT_DIR,
-    split_manifest=None
+    split_manifest=None,
+    start_iteration=0
 ):
-    print(f"Training the model for {total_iterations} iterations")
+    if start_iteration:
+        print(f"Resuming training from iteration {start_iteration} toward {total_iterations}")
+    else:
+        print(f"Training the model for {total_iterations} iterations")
     model.train()
     os.makedirs(model_output_dir, exist_ok=True)
     run_name = os.path.basename(os.path.normpath(model_output_dir))
@@ -65,7 +70,7 @@ def train(model,
     
     # loop until total_iteraitons is met
     try:
-        for iteration, (X_batch, y_batch) in enumerate(train_loader, start=1):
+        for iteration, (X_batch, y_batch) in enumerate(train_loader, start=start_iteration + 1):
             if torch_device == "cuda":
                 torch.cuda.synchronize()
             start_time = time.perf_counter()
@@ -119,6 +124,21 @@ def save_model(path, model, optimizer, iteration, split_manifest=None):
         },
         path
     )
+
+def find_latest_checkpoint(checkpoint_dir, run_name):
+    """Newest checkpoint path in checkpoint_dir (prefers _final), or None."""
+    if not os.path.isdir(checkpoint_dir):
+        return None
+    final_path = os.path.join(checkpoint_dir, f"{run_name}_final.pt")
+    if os.path.exists(final_path):
+        return final_path
+    best_path, best_iter = None, -1
+    for name in os.listdir(checkpoint_dir):
+        match = re.fullmatch(rf"{re.escape(run_name)}_iter_(\d+)\.pt", name)
+        if match and int(match.group(1)) > best_iter:
+            best_iter, best_path = int(match.group(1)), os.path.join(checkpoint_dir, name)
+    return best_path
+
 
 def make_or_load_split(dataset, split_dir, train_fraction=0.5):
     os.makedirs(split_dir, exist_ok=True)
@@ -186,6 +206,12 @@ def parse_args():
     parser.add_argument("--iterations", default=500_000, type=int)
     parser.add_argument("--outputs", default=MODEL_OUTPUT_DIR)
     parser.add_argument("--splits", default=SPLITS_DIR)
+    parser.add_argument("--max-pixels", type=int, default=None,
+                        help="Per-sample resized-area cap (short*long) to avoid OOM "
+                             "on extreme aspect-ratio images. None = no cap.")
+    parser.add_argument("--resume", action="store_true",
+                        help="Continue from the newest checkpoint in the run's output "
+                             "dir (restores model+optimizer+iteration). Starts fresh if none.")
     return parser.parse_args()
 
 
@@ -214,12 +240,33 @@ if __name__ == "__main__":
     args = parse_args()
     checkpoint_dir = dataset_model_output_dir(args.outputs, args.dataset, args.model)
     split_dir = dataset_split_dir(args.splits, args.dataset)
+    run_name = os.path.basename(os.path.normpath(checkpoint_dir))
 
     total_iterations = args.iterations
-    random_tensor_transform = PairedRandomResizeToTensor()
+    random_tensor_transform = PairedRandomResizeToTensor(max_pixels=args.max_pixels)
     dataset = ImageOperatorDataset(args.dataset, transform=random_tensor_transform)
     train_set, test_set, split_manifest = make_or_load_split(dataset, split_dir)
-    sampler = RandomSampler(train_set, replacement=True, num_samples=total_iterations)
+
+    # TODO: no hyperparameter tuning atm
+    model = MODEL_VARIANTS[args.model]().to(torch_device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    loss = nn.MSELoss()
+
+    # Resume from the newest checkpoint if requested (and one exists).
+    start_iteration = 0
+    if args.resume:
+        checkpoint_path = find_latest_checkpoint(checkpoint_dir, run_name)
+        if checkpoint_path is not None:
+            checkpoint = torch.load(checkpoint_path, map_location=torch_device, weights_only=False)
+            model.load_state_dict(checkpoint["model_state_dict"])
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            start_iteration = checkpoint["iteration"]
+            print(f"Resuming from {checkpoint_path} (iteration {start_iteration})")
+        else:
+            print("--resume set but no checkpoint found; starting from scratch")
+
+    remaining_iterations = max(0, total_iterations - start_iteration)
+    sampler = RandomSampler(train_set, replacement=True, num_samples=remaining_iterations)
     dataloader = DataLoader(
         train_set,
         batch_size=1,
@@ -230,11 +277,6 @@ if __name__ == "__main__":
 
     print("Dataset loaded into dataloader!")
 
-    # TODO: no hyperparameter tuning atm
-    model = MODEL_VARIANTS[args.model]().to(torch_device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    loss = nn.MSELoss()
-
     train(
         model,
         optimizer,
@@ -242,9 +284,9 @@ if __name__ == "__main__":
         dataloader,
         total_iterations=total_iterations,
         model_output_dir=checkpoint_dir,
-        split_manifest=split_manifest
+        split_manifest=split_manifest,
+        start_iteration=start_iteration,
     )
 
-    run_name = os.path.basename(os.path.normpath(checkpoint_dir))
     final_model_path = os.path.join(checkpoint_dir, f"{run_name}_final.pt")
     save_model(final_model_path, model, optimizer, total_iterations, split_manifest)
