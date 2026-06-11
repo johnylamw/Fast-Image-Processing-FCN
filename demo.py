@@ -5,48 +5,13 @@ import torch
 import torchvision.transforms.functional as F
 from PIL import Image, ImageDraw, ImageFont
 from dataset import ImageOperatorDataset
-from model import CAN24AN, CAN24AND, CAN32AN, CAN32AND
+from utils import checkpoint_display_name, filter_pairs, get_device, load_model
 
-MODEL_VARIANTS = {
-    "CAN24+AN": CAN24AN,
-    "CAN32+AN": CAN32AN,
-    "CAN24+AND": CAN24AND,
-    "CAN32+AND": CAN32AND,
-}
+OUTPUT_DIR = "output/demo"
 
-def get_device():
-    if torch.cuda.is_available():
-        return "cuda"
-    if torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
-
-# loads model weights based on checkpoint path
-def load_model(checkpoint_path, device):
-    # take the model name from the directory
-    model_name = os.path.basename(os.path.dirname(checkpoint_path))
-    dataset_name = os.path.basename(os.path.dirname(os.path.dirname(checkpoint_path)))
-    display_name = f"{dataset_name}/{model_name}"
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model = MODEL_VARIANTS[model_name]().to(device)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval()
-    return model, checkpoint, display_name
-
-# randomly samples image pairs from the test manifest if available
-def choose_pairs(dataset, checkpoint, num_samples):
-    test_basenames = checkpoint.get("split_manifest", {}).get("test_basenames")
-    if not test_basenames:
-        pairs = dataset.pairs
-    else:
-        test_basenames = set(test_basenames)
-        pairs = [
-            (input_path, target_path)
-            for input_path, target_path in dataset.pairs
-            if input_path.stem in test_basenames
-        ]
-        if not pairs:
-            pairs = dataset.pairs
+# randomly samples image pairs from the test split
+def choose_pairs(dataset, split_path, num_samples):
+    pairs = filter_pairs(dataset, split_path)
     return random.sample(pairs, num_samples)
 
 # runs a inferencing for a single image through the loaded model
@@ -113,20 +78,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset")
     parser.add_argument("checkpoints", nargs="+")
-    parser.add_argument("--output-dir", default="demos")
     parser.add_argument("--num-samples", type=int, default=1)
     args = parser.parse_args()
 
     device = get_device()
 
-    _, first_checkpoint, _ = load_model(args.checkpoints[0], device)
     dataset = ImageOperatorDataset(args.dataset)
-    pairs = choose_pairs(dataset, first_checkpoint, args.num_samples)
+    dataset_name = os.path.basename(os.path.normpath(args.dataset))
+    split_path = os.path.join("data_splits", dataset_name, "test_split.txt")
+    pairs = choose_pairs(dataset, split_path, args.num_samples)
 
     models = []
     for checkpoint_path in args.checkpoints:
-        model, _, model_name = load_model(checkpoint_path, device)
-        models.append((model_name, model))
+        model, _, _ = load_model(checkpoint_path, device)
+        models.append((checkpoint_display_name(checkpoint_path), model))
 
     comparisons = []
     for input_path, target_path in pairs:
@@ -139,10 +104,9 @@ def main():
         print(f"Input: {input_path}")
         print(f"Target: {target_path}")
 
-    dataset_name = os.path.basename(os.path.normpath(args.dataset))
     sample_names = "_".join(input_path.stem for input_path, _ in pairs)
     output_name = f"DEMO_{dataset_name}_[{sample_names}].png"
-    output_path = os.path.join(args.output_dir, output_name)
+    output_path = os.path.join(OUTPUT_DIR, output_name)
     save_stacked_comparisons(comparisons, output_path)
     print(f"Demo saved to {output_path}")
 

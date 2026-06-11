@@ -4,7 +4,7 @@ import torch.nn as nn
 from dataset import ImageOperatorDataset, PairedRandomResizeToTensor
 from torch.utils.data import DataLoader, RandomSampler, Subset
 
-from model import CAN24AN, CAN24AND, CAN32AND, CAN32, CAN32AN, CAN32BN
+from utils import MODEL_VARIANTS
 
 import argparse
 import csv
@@ -18,14 +18,6 @@ torch_device = "cuda" if torch.cuda.is_available() else "cpu"
 SEED = 42
 MODEL_OUTPUT_DIR = "model_runs"
 SPLITS_DIR = "data_splits"
-MODEL_VARIANTS = {
-    "CAN24+AN": CAN24AN,
-    "CAN24+AND": CAN24AND,
-    "CAN32": CAN32,
-    "CAN32+AN": CAN32AN,
-    "CAN32+AND": CAN32AND,
-    "CAN32+BN": CAN32BN,
-}
 
 # TODO: we can add valid_loader if we hyperparameter tuning. original paper does not.
 # can add metrics and valid_loader?
@@ -36,7 +28,7 @@ def train(model,
     train_loader,
     total_iterations=500_000,
     model_output_dir=MODEL_OUTPUT_DIR,
-    split_manifest=None,
+    split=None,
     start_iteration=0
 ):
     if start_iteration:
@@ -110,17 +102,17 @@ def train(model,
             # Save checkpoint every 10k iterations
             if iteration % 10_000 == 0:
                 checkpoint_path = os.path.join(model_output_dir, f"{run_name}_iter_{iteration}.pt")
-                save_model(checkpoint_path, model, optimizer, iteration, split_manifest)
+                save_model(checkpoint_path, model, optimizer, iteration, split)
     finally:
         log_file.close()
 
-def save_model(path, model, optimizer, iteration, split_manifest=None):
+def save_model(path, model, optimizer, iteration, split=None):
     torch.save(
         {
             "iteration": iteration,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
-            "split_manifest": split_manifest,
+            "split": split,
         },
         path
     )
@@ -142,60 +134,60 @@ def find_latest_checkpoint(checkpoint_dir, run_name):
 
 def make_or_load_split(dataset, split_dir, train_fraction=0.5):
     os.makedirs(split_dir, exist_ok=True)
-    train_manifest_path = os.path.join(split_dir, "train_manifest.txt")
-    test_manifest_path = os.path.join(split_dir, "test_manifest.txt")
+    train_split_path = os.path.join(split_dir, "train_split.txt")
+    test_split_path = os.path.join(split_dir, "test_split.txt")
     basename_to_index = {
         input_path.stem: index
         for index, (input_path, _) in enumerate(dataset.pairs)
     }
 
-    if os.path.exists(train_manifest_path) and os.path.exists(test_manifest_path):
-        train_basenames = read_manifest(train_manifest_path)
-        test_basenames = read_manifest(test_manifest_path)
+    if os.path.exists(train_split_path) and os.path.exists(test_split_path):
+        train_basenames = read_split(train_split_path)
+        test_basenames = read_split(test_split_path)
     else:
         basenames = list(basename_to_index)
         random.Random(SEED).shuffle(basenames)
         train_size = int(len(basenames) * train_fraction)
         train_basenames = basenames[:train_size]
         test_basenames = basenames[train_size:]
-        write_manifest(train_manifest_path, train_basenames)
-        write_manifest(test_manifest_path, test_basenames)
+        write_split(train_split_path, train_basenames)
+        write_split(test_split_path, test_basenames)
 
     split = {
         "dataset_size": len(dataset),
         "seed": SEED,
         "train_fraction": train_fraction,
-        "train_manifest": train_manifest_path,
-        "test_manifest": test_manifest_path,
+        "train_split": train_split_path,
+        "test_split": test_split_path,
         "train_basenames": train_basenames,
         "test_basenames": test_basenames,
     }
 
-    train_indices = manifest_to_indices(train_basenames, basename_to_index)
-    test_indices = manifest_to_indices(test_basenames, basename_to_index)
+    train_indices = split_to_indices(train_basenames, basename_to_index)
+    test_indices = split_to_indices(test_basenames, basename_to_index)
     train_set = Subset(dataset, train_indices)
     test_set = Subset(dataset, test_indices)
     return train_set, test_set, split
 
 
-# read the train_test split manifest
-def read_manifest(path):
+# read the train_test split file
+def read_split(path):
     with open(path, "r") as f:
         return [line.strip() for line in f if line.strip()]
 
 
-# write the train/test split manifest for reproducability + evaluation later
-def write_manifest(path, basenames):
+# write the train/test split file for reproducability + evaluation later
+def write_split(path, basenames):
     with open(path, "w") as f:
         for basename in basenames:
             f.write(f"{basename}\n")
 
 
-def manifest_to_indices(basenames, basename_to_index):
+def split_to_indices(basenames, basename_to_index):
     missing = [basename for basename in basenames if basename not in basename_to_index]
     if missing:
         preview = ", ".join(missing[:5])
-        raise ValueError(f"Manifest contains missing dataset items: {preview} (first 5 are shown)")
+        raise ValueError(f"Split contains missing dataset items: {preview} (first 5 are shown)")
     return [basename_to_index[basename] for basename in basenames]
 
 
@@ -245,7 +237,7 @@ if __name__ == "__main__":
     total_iterations = args.iterations
     random_tensor_transform = PairedRandomResizeToTensor(max_pixels=args.max_pixels)
     dataset = ImageOperatorDataset(args.dataset, transform=random_tensor_transform)
-    train_set, test_set, split_manifest = make_or_load_split(dataset, split_dir)
+    train_set, test_set, split = make_or_load_split(dataset, split_dir)
 
     # TODO: no hyperparameter tuning atm
     model = MODEL_VARIANTS[args.model]().to(torch_device)
@@ -284,9 +276,9 @@ if __name__ == "__main__":
         dataloader,
         total_iterations=total_iterations,
         model_output_dir=checkpoint_dir,
-        split_manifest=split_manifest,
+        split=split,
         start_iteration=start_iteration,
     )
 
     final_model_path = os.path.join(checkpoint_dir, f"{run_name}_final.pt")
-    save_model(final_model_path, model, optimizer, total_iterations, split_manifest)
+    save_model(final_model_path, model, optimizer, total_iterations, split)

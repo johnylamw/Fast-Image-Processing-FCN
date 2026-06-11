@@ -75,7 +75,7 @@ uv run train.py \
 --dataset datasets/adobe5kA \
 --model CAN24+AN \
 --iterations 500_000 \
---output model_runs \
+--outputs model_runs \
 --splits data_splits
 ```
 
@@ -86,3 +86,30 @@ uv run train.py \
 --model CAN24+AN \
 --iterations 500_000 
 ```
+
+
+---
+# Demo - 3 Samples on Div2k Test
+```
+uv run python demo.py \
+  datasets/div2k \
+  model_runs/adobe5kA/CAN24+AN/CAN24+AN_final.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt \
+  model_runs/div2k/CAN32+AN/CAN32+AN_final.pt \
+  model_runs/flickr2k/CAN32+AN/CAN32+AN_final.pt \
+  --num-samples 3
+```
+
+---
+# Evaluate Model(s) on Div2k Test (MSE, SSIM, PSNR)
+```
+uv run python evaluate.py \
+  datasets/div2k \
+  model_runs/adobe5kA/CAN24+AN/CAN24+AN_final.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt \
+  model_runs/div2k/CAN32+AN/CAN32+AN_final.pt \
+  model_runs/flickr2k/CAN32+AN/CAN32+AN_final.pt \
+  --short-edge 1080
+```
+
+NOTE: Short-edge = the resizing of the image. The paper's experiment defaults to 1080 for eval.
