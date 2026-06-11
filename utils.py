@@ -38,6 +38,13 @@ def checkpoint_dataset_name(checkpoint_path):
 def checkpoint_display_name(checkpoint_path):
     return f"{checkpoint_dataset_name(checkpoint_path)}/{checkpoint_model_name(checkpoint_path)}"
 
+# gets the checkpoint iteration from the filename
+def checkpoint_iteration(checkpoint_path):
+    checkpoint_name = os.path.basename(checkpoint_path)
+    if "_iter_" in checkpoint_name:
+        return checkpoint_name.split("_iter_")[-1].replace(".pt", "")
+    return ""
+
 # loads model weights based on checkpoint path
 def load_model(checkpoint_path, device):
     model_name = checkpoint_model_name(checkpoint_path)

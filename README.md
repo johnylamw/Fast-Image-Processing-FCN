@@ -112,4 +112,6 @@ uv run python evaluate.py \
   --short-edge 1080
 ```
 
+additional --num-samples (deterministic for testing, from pairs[0:n])
+
 NOTE: Short-edge = the resizing of the image. The paper's experiment defaults to 1080 for eval.

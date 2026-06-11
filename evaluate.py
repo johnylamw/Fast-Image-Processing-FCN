@@ -10,7 +10,7 @@ import torchvision.transforms.functional as TF
 from PIL import Image
 
 from dataset import ImageOperatorDataset
-from utils import checkpoint_dataset_name, filter_pairs, get_device, load_model, synchronize_device
+from utils import checkpoint_dataset_name, checkpoint_iteration, filter_pairs, get_device, load_model, synchronize_device
 
 OUTPUT_DIR = "output/evaluate"
 
@@ -73,6 +73,7 @@ def main():
     parser.add_argument("dataset")
     parser.add_argument("checkpoints", nargs="+")
     parser.add_argument("--short-edge", type=int, default=1080) # the paper uses 1080 for their experiments
+    parser.add_argument("--num-samples", type=int, default=None)
     args = parser.parse_args()
 
     device = get_device()
@@ -80,6 +81,8 @@ def main():
     dataset_name = os.path.basename(os.path.normpath(args.dataset))
     split_path = os.path.join("data_splits", dataset_name, "test_split.txt")
     pairs = filter_pairs(dataset, split_path)
+    if args.num_samples is not None:
+        pairs = pairs[:args.num_samples]
     if not pairs:
         raise ValueError("No dataset pairs matched the test split")
     print("Evaluation Config:")
@@ -98,6 +101,7 @@ def main():
             "trained_dataset": checkpoint_dataset_name(checkpoint_path),
             "model": model_name,
             "checkpoint": checkpoint_path,
+            "checkpoint_iteration": checkpoint_iteration(checkpoint_path),
             "test_split": split_path,
             "short_edge": args.short_edge,
             **metrics,
