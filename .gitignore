@@ -231,8 +231,15 @@ fivek_data/
 dataset/adobe5k_kaggle/
 dataset/adobe5k_processed/
 dataset/div2k/
+dataset/flickr2k/
 *.zip
 
 # Model checkpoints / training run outputs (not source)
 model_runs/
 checkpoint/
+
+# Training stdout logs
+logs/
+
+# Local working notes (not for the shared repo)
+docs/
