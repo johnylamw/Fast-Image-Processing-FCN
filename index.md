@@ -1,8 +1,3 @@
-title: [The title of your site]
-description: [A short description of your site's purpose]
-
---
-
 <centering>
 <h1 style='text-align: center'>Reproduction Blog: Fast Image Processing with Fully-Convolutional Networks</h1>
 </centering><centering>
