@@ -1,0 +1,2 @@
+dataset,trained_dataset,model,checkpoint,checkpoint_iteration,test_split,short_edge,images,mse,psnr,ssim,time_ms
+flickr2k,flickr2k,CAN32+AN,model_runs/flickr2k/CAN32+AN/CAN32+AN_final.pt,,data_splits/flickr2k/test_split.txt,1080,1325,0.009884792380034924,20.050323486328125,0.7430722117424011,35.593649428689254

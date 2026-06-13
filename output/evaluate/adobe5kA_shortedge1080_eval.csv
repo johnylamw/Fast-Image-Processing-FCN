@@ -1,0 +1,5 @@
+dataset,trained_dataset,model,checkpoint,checkpoint_iteration,test_split,short_edge,images,mse,psnr,ssim,time_ms
+adobe5kA,adobe5kA,CAN24+AN,model_runs/adobe5kA/CAN24+AN/CAN24+AN_iter_500000.pt,500000,data_splits/adobe5kA/test_split.txt,1080,2500,0.013561759144067764,18.67683982849121,0.7133095264434814,25.52483144029975
+adobe5kA,adobe5kA,CAN24+AND,model_runs/adobe5kA/CAN24+AND/CAN24+AND_final.pt,,data_splits/adobe5kA/test_split.txt,1080,2500,0.014519881457090378,18.380369186401367,0.726427435874939,63.45234116613865
+adobe5kA,adobe5kA,CAN32+AN,model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt,,data_splits/adobe5kA/test_split.txt,1080,2500,0.009860898368060589,20.060832977294922,0.7353639602661133,35.66267599314451
+adobe5kA,adobe5kA,CAN32+AND,model_runs/adobe5kA/CAN32+AND/CAN32+AND_final.pt,,data_splits/adobe5kA/test_split.txt,1080,2500,0.01920154318213463,17.16663932800293,0.7194305658340454,91.89352632537484
