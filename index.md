@@ -21,11 +21,11 @@
 
 ## 1. Introduction and Motivation
 
-Traditional image processing pipelines often rely on hand-designed operators for performing tone mapping, stylization, smoothing and detail enhancement. However, they are often computationally expensive and difficult to run in real time depending on on the transformation algorithm and the resolution of the image. Chen et al. address this by training fully-convolutional networks to approximate these operators with a single forward pass. 
+Traditional image processing pipelines often rely on hand-designed operators for performing tone mapping, stylization, smoothing and detail enhancement. However, they are often computationally expensive and difficult to run in real time depending on the transformation algorithm and the resolution of the image. Chen et al. address this by training fully-convolutional networks to approximate these operators with a single forward pass. 
 
-This paper is interesting to reproduce because it claims that learned image-processing approximators can match expensive traditional image-processing operators while being much faster at inferencing. 
+This paper is interesting to reproduce because it claims that learned image-processing approximators can match expensive traditional image-processing operators while being much faster at inference. 
 
-Our reproduction implements the Context Aggregation Network (CAN) architecture in PyTorch, including adaptive normalization, random-resolution training, and evaluation with MSE, PSNR, SSIM, and runtime. We also evaluate cross-dataset generalizability, model variants, and training progression over checkpoints.
+Our reproduction implements the Context Aggregation Network (CAN) architecture in PyTorch, including adaptive normalization, random-resolution training, and evaluation with MSE, PSNR, SSIM, and runtime. We also evaluate cross-dataset generalization, model variants, and training progression over checkpoints.
 
 ## 2. Reproduction Scope
 
@@ -46,7 +46,7 @@ We do not reproduce the full set of ten image-processing operators from the pape
 
 
 ### 2.2 Changes and Extensions
-- Reimplemented the model and training pipeline in PyTorch (orignal: Tensorflow)
+- Reimplemented the model and training pipeline in PyTorch (original: TensorFlow)
 - For the cross-dataset study, we did not evaluate on the RAISE dataset used in the paper. Instead, we used Flickr2K and Div2K as alternative datasets for cross-dataset generalization.
 - Added adaptive-dilation variants `CAN24+AND` and `CAN32+AND`
 - Added multi-checkpoint evaluation for training progression
@@ -82,6 +82,8 @@ We implemented four CAN-based model variants. The first two are based on the arc
 | `CAN24+AND` | 9 | 24 | Adaptive normalization | Our adaptive-dilation variant |
 | `CAN32+AND` | 10 | 32 | Adaptive normalization | Larger adaptive-dilation variant |
 
+NOTE: The `+AND` variants replace the fixed dilated convolutions with deformable convolutions which allows the model to learn spatial offsets instead of using a fixed dilation pattern. The `+AND` variants are not part of the original paper and is our introduced new algorithm variant.
+
 ### 3.2 Trained Models
 
 | Model | Architecture | Training Dataset | Training Samples | Purpose |
@@ -90,8 +92,8 @@ We implemented four CAN-based model variants. The first two are based on the arc
 | Adobe5kA `CAN32+AN` | `CAN32+AN` | Adobe5kA | 2500 | Larger paper model |
 | Adobe5kA `CAN24+AND` | `CAN24+AND` | Adobe5kA | 2500 | Adaptive-dilation variant |
 | Adobe5kA `CAN32+AND` | `CAN32+AND` | Adobe5kA | 2500 | Larger adaptive-dilation variant |
-| Flickr2K `CAN24+AN` | `CAN24+AN` | Flickr2K | 1325 | Cross-dataset generalization |
-| Div2K `CAN24+AN` | `CAN24+AN` | Div2K | 450 | Cross-dataset generalization |
+| Flickr2K `CAN24+AN` | `CAN32+AN` | Flickr2K | 1325 | Cross-dataset generalization |
+| Div2K `CAN24+AN` | `CAN32+AN` | Div2K | 450 | Cross-dataset generalization |
 
 
 ### 3.3 Datasets and Splits
@@ -129,8 +131,8 @@ model_runs/<dataset_name>/<model_name>
 ```
 
 ### 3.5 Evaluation Setup
-Evaluation is performed on the fixed held-out test split. 
-For the main qualitative result, we followed the paper's evaluation setup where images are resized to to 1080p resolution for the main quantitative results.
+For the main quantitative results, we follow the paper's evaluation setup and resize images to 1080p resolution.
+
 
 We report four metrics:
 
@@ -150,34 +152,61 @@ Evaluation results across different checkpoints are saved as CSV files in:
 
 ## 4. Experiments and Results
 
-### 4.1 Same-Dataset Evaluation
+### 4.1 Same-Dataset Evaluation and Architecture Ablation
 
 We first evaluate each final model on the test split from the same dataset it was trained on. This is the closest setting to the main evaluation in the original paper because the model is tested on held-out images from the same image distribution.
 
 For this experiment, images are resized to 1080p during evaluation, following the paper's evaluation protocol. Since our reproduction focuses only on the pencil-sketch operator, this table is analogous to the paper's Table 1 but capturing only one operator rather than the average across all ten.
-#### Adobe5kA
+#### Adobe5kA Model Comparison
+
+We compare the different CAN variants to understand how architecture choices affect approximation quality and runtime. The two paper-based variants are `CAN24+AN` and `CAN32+AN`. The `CAN24+AND` and `CAN32+AND` models are our adaptive-dilation extensions.
+
+All models are evaluated on the Adobe5kA test split so that the comparison focuses on architecture rather than dataset differences.
+
+The ablation lets us compare the effect of model capacity and receptive-field design. In particular, we compare whether the larger `CAN32+AN` model improves over `CAN24+AN`, and whether our adaptive-dilation variants improve or degrade performance. 
 
 | Model | MSE | PSNR (dB) | SSIM | Time (ms) | # Params |
 |---|---:|---:|---:|---:|---:|
-| `CAN24+AN` | TODO | TODO | TODO | TODO | TODO |
-| `CAN32+AN` | TODO | TODO | TODO | TODO | TODO |
-| `CAN24+AND` | TODO | TODO | TODO | TODO | TODO |
-| `CAN32+AND` | TODO | TODO | TODO | TODO | TODO |
+| `CAN24+AN` | 0.013570 | 18.674 | 0.713 | 121.8 | 37K |
+| `CAN32+AN` | 0.009859 | 20.062 | 0.735 | 150.8 | 75K |
+| `CAN24+AND` | 0.014518 | 18.381 | 0.726 | 368.5 | 65K |
+| `CAN32+AND` | 0.019209 | 17.165 | 0.719 | 579.5 | 117K |
+
 
 #### Additional Same-Dataset Results
 
 | Dataset | Model | MSE | PSNR (dB) | SSIM | Time (ms) | # Params |
 |---|---|---:|---:|---:|---:|---:|
-| Flickr2K | TODO | TODO | TODO | TODO | TODO | TODO |
-| Div2K | TODO | TODO | TODO | TODO | TODO | TODO |
+| Flickr2K | `CAN32+AN` | 0.009886 | 20.049 | 0.743 | 272.8 | 75K |
+| Div2K | `CAN32+AN` | 0.011472 | 19.399 | 0.734 | 881.6 | 75K |
+
+- Flickr2K and Div2K are `CAN32+AN` models.
 
 
-
-This experiment serves as our main reproduction result.
+This experiment serves as our **main reproduction** result.
 
 - Higher PSNR and SSIM indicate that the model more closely approximates the pencil-sketch target.
 - Lower MSE indicates lower pixel-level reconstruction error.
 - Time measures average inference time per image on our hardware.
+
+**TODO: Explain the results WRT to model comparison and ablations** (Done)
+
+There are a couple takeaways from the same-dataset evaluation.
+
+More capacity helps, `CAN32+AN` has wider layers and more parameters than
+`CAN24+AN` (75K vs 37K),. It scores better on every metric (20.06 vs
+18.67 dB PSNR, 0.735 vs 0.713 SSIM) for only a smallm increase in runtime cost. This matches
+the paper: the larger network gives a better approximation. 
+
+Our `+AND` variants did not improve. They scored lower (`CAN32+AND` is the weakest
+at 17.17 dB) and run much slower, with `CAN32+AND` about four times slower than
+`CAN32+AN`. The pencil-sketch mapping is local and smooth, so the fixed dilation
+already gives enough receptive field and the extra offsets just add cost
+
+The same `CAN32+AN` architecture gives very similar performance
+on Flickr2K (20.05 dB) and Div2K (19.40 dB) as on Adobe5kA (20.06 dB), so the
+quality comes from the architecture, not just one dataset. Runtime differs mainly
+because of the different image resolutions.
 
 ### 4.2 Cross-Dataset Generalization
 
@@ -190,13 +219,14 @@ To keep the comparison focused on dataset shift, we compare the same architectur
 | Test Dataset | Training Dataset | Model | MSE | PSNR (dB) | SSIM | Time (ms) |
 |---|---|---|---:|---:|---:|---:|
 | Adobe5kA | Flickr2K | TODO | TODO | TODO | TODO | TODO |
-| Flickr2K | Adobe5kA | TODO | TODO | TODO | TODO | TODO |
 | Adobe5kA | Div2K | TODO | TODO | TODO | TODO | TODO |
+| Flickr2K | Adobe5kA | TODO | TODO | TODO | TODO | TODO |
 | Div2K | Adobe5kA | TODO | TODO | TODO | TODO | TODO |
 
 This experiment tests whether the learned pencil-sketch approximation depends strongly on the training dataset. 
 
-**TODO: explanation**
+**TODO: explanation** (in progress)
+
 
 ### 4.3 Cross-Resolution Generalization
 
@@ -209,23 +239,6 @@ For this experiment, we evaluate the same final checkpoint at multiple short-edg
 | TODO | TODO | TODO | TODO | TODO | TODO |
 
 This experiment checks whether the model is sensitive to evaluation scale. We expect inference time to increase with resolution, while quality metrics may change depending on how well the learned operator transfers across image scales.
-
-### 4.4 Architecture Ablation
-
-We compare the different CAN variants to understand how architecture choices affect approximation quality and runtime. The two paper-based variants are `CAN24+AN` and `CAN32+AN`. The `CAN24+AND` and `CAN32+AND` models are our adaptive-dilation extensions.
-
-All models are evaluated on the Adobe5kA test split so that the comparison focuses on architecture rather than dataset differences.
-
-| Model | MSE | PSNR (dB) | SSIM | Time (ms) | # Params |
-|---|---:|---:|---:|---:|---:|
-| `CAN24+AN` | TODO | TODO | TODO | TODO | TODO |
-| `CAN32+AN` | TODO | TODO | TODO | TODO | TODO |
-| `CAN24+AND` | TODO | TODO | TODO | TODO | TODO |
-| `CAN32+AND` | TODO | TODO | TODO | TODO | TODO |
-
-This ablation lets us compare the effect of model capacity and receptive-field design. In particular, we compare whether the larger `CAN32+AN` model improves over `CAN24+AN`, and whether our adaptive-dilation variants improve or degrade performance. 
-
-**TODO: talk about results**
 
 ### 4.5 Training Progression Over Checkpoints
 
@@ -240,14 +253,14 @@ We evaluate selected checkpoints at:
 - 250k iterations
 - 500k iterations
 
-| Iteration | Model | MSE | PSNR (dB) | SSIM | Time (ms) |
-|---:|---|---:|---:|---:|---:|
-| 10000 | TODO | TODO | TODO | TODO | TODO |
-| 20000 | TODO | TODO | TODO | TODO | TODO |
-| 50000 | TODO | TODO | TODO | TODO | TODO |
-| 100000 | TODO | TODO | TODO | TODO | TODO |
-| 250000 | TODO | TODO | TODO | TODO | TODO |
-| 500000 | TODO | TODO | TODO | TODO | TODO |
+| Dataset | Model | Best Iteration | Best PSNR (dB) | Final PSNR (dB) | Best SSIM | Final SSIM |
+|---|---|---:|---:|---:|---:|---:|
+| Adobe5kA | `CAN24+AN` | 250k | 19.936 | 18.674 | 0.726 | 0.713 |
+| Adobe5kA | `CAN24+AND` | 250k | 20.683 | 18.381 | 0.735 | 0.726 |
+| Adobe5kA | `CAN32+AN` | 500k | 20.062 | 20.062 | 0.735 | 0.735 |
+| Adobe5kA | `CAN32+AND` | 250k | 18.226 | 17.165 | 0.729 | 0.719 |
+| Div2K | `CAN32+AN` | 250k | 20.269 | 19.399 | 0.738 | 0.734 |
+| Flickr2K | `CAN32+AN` | 500k | 20.049 | 20.049 | 0.743 | 0.743 |
 
 **TODO: ADD DEMO IMAGES OF MODEL UNDER DIFFERENT ITERATIONS**
 **TODO: EXPLANATION. Answer the question, did we really need to train 500k iterations?**
@@ -261,6 +274,12 @@ The plot shows training loss over iterations. This helps verify that the model i
 **TODO: Insert training loss vs iteration plot**
 
 **TODO: EXPLANATION**
+
+### 4.7 Qualitative Results
+
+We also generate qualitative demos using held-out test images. Each demo shows the input image, predictions from selected models, and the ground truth pencil-sketch target.
+
+**TODO: INSERT DEMO IMAGES HERE FOR ALL MODEL VARIANTS**
 
 ## 5. Discussion (WIP)
 
