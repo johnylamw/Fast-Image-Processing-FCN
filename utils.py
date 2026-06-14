@@ -43,6 +43,8 @@ def checkpoint_iteration(checkpoint_path):
     checkpoint_name = os.path.basename(checkpoint_path)
     if "_iter_" in checkpoint_name:
         return checkpoint_name.split("_iter_")[-1].replace(".pt", "")
+    if checkpoint_name.endswith("_final.pt"):
+        return "500000"
     return ""
 
 # loads model weights based on checkpoint path
