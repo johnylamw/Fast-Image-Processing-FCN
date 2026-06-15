@@ -21,7 +21,9 @@ args = parser.parse_args()
 # 2. Point Python to the submodule folder
 # =====================================================================
 submodule_path = os.path.join(os.path.dirname(__file__), 'third_party', 'mit-adobe-fivek-dataset')
-sys.path.append(submodule_path)
+# insert at FRONT so the submodule's `datasets` package wins over the installed
+# HuggingFace `datasets` (otherwise `from datasets.fivek import ...` is shadowed).
+sys.path.insert(0, submodule_path)
 
 # =====================================================================
 # 3. Intercept JSON loading to limit size AND handle split bypassing
@@ -84,7 +86,7 @@ json.load = patched_load
 # =====================================================================
 # 4. Import from the submodule and run the download
 # =====================================================================
-from datasets.fivek import MITAboveFiveK
+from dataset.fivek import MITAboveFiveK
 from torch.utils.data.dataloader import DataLoader
 
 if __name__ == "__main__":

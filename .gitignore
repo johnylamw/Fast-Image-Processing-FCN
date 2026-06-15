@@ -236,7 +236,11 @@ dataset/flickr2k/
 
 # Model checkpoints / training run outputs (not source)
 model_runs/
+tf_model_runs/
 checkpoint/
+
+# Third-party FiveK loader (cloned on demand, not vendored)
+third_party/
 
 # Training stdout logs
 logs/
