@@ -46,7 +46,7 @@ We do not reproduce the full set of ten image-processing operators from the pape
 
 
 ### 2.2 Changes and Extensions
-- Reimplemented the model and training pipeline in PyTorch (original: TensorFlow)
+- Reimplemented the model and training pipeline in PyTorch (orignal: TensorFlow)
 - For the cross-dataset study, we did not evaluate on the RAISE dataset used in the paper. Instead, we used Flickr2K and Div2K as alternative datasets for cross-dataset generalization.
 - Added adaptive-dilation variants `CAN24+AND` and `CAN32+AND`
 - Added multi-checkpoint evaluation for training progression
@@ -189,7 +189,7 @@ This experiment serves as our **main reproduction** result.
 - Lower MSE indicates lower pixel-level reconstruction error.
 - Time measures average inference time per image on our hardware.
 
-**TODO: Explain the results WRT to model comparison and ablations** (Done)
+**TODO: Explain the results WRT to model comparison and ablations** (finished)
 
 There are a couple takeaways from the same-dataset evaluation.
 
@@ -218,15 +218,39 @@ To keep the comparison focused on dataset shift, we compare the same architectur
 
 | Test Dataset | Training Dataset | Model | MSE | PSNR (dB) | SSIM | Time (ms) |
 |---|---|---|---:|---:|---:|---:|
-| Adobe5kA | Flickr2K | TODO | TODO | TODO | TODO | TODO |
-| Adobe5kA | Div2K | TODO | TODO | TODO | TODO | TODO |
-| Flickr2K | Adobe5kA | TODO | TODO | TODO | TODO | TODO |
-| Div2K | Adobe5kA | TODO | TODO | TODO | TODO | TODO |
+| Adobe5kA | Flickr2K | `CAN32+AN` | 0.013493 | 18.699 | 0.719 | 71.5 |
+| Adobe5kA | Div2K | `CAN32+AN` | 0.022591 | 16.461 | 0.701 | 71.5 |
+| Flickr2K | Adobe5kA | `CAN32+AN` | 0.041337 | 13.837 | 0.638 | 70.7 |
+| Div2K | Adobe5kA | `CAN32+AN` | 0.040113 | 13.967 | 0.643 | 72.0 |
+
 
 This experiment tests whether the learned pencil-sketch approximation depends strongly on the training dataset. 
 
-**TODO: explanation** (in progress)
+**TODO: add an example demo comparisons of how the different model generates for an image from the three datasets? 3 demos in total** (in progress)
 
+![Cross-dataset comparison on an Adobe5kA test image](figures/crossdata_adobe.png)
+Adobe5kA test image. Left to right: input, the Adobe5kA / Flickr2K / Div2K ⁠ CAN32+AN ⁠ models, and the GT pencil sketch. The Adobe-trained model tracks the target most closely; the 2K-trained models render the same input with a slightly different tone.
+
+![Cross-dataset comparison on a Flickr2K test image](figures/crossdata_flickr.png)
+Flickr2K test image. Here the Flickr2K- and Div2K-trained models stay close to GT, while the Adobe-trained model is visibly washed out — the asymmetric transfer described below.
+
+![Cross-dataset comparison on a Div2K test image](figures/crossdata_div2k.png)
+Div2K test image. Same pattern: the model trained on clean 2K data generalizes, the Adobe-trained model degrades on the clean input.
+
+
+**TODO: explanation** (in progress)
+Every cross-dataset pairing does worse than its same-dataset version, which tells us the learned pencil-sketch mapping is not purely a function of the operator (identical everywhere), but also depends on the image statistics of the training data.
+
+The drop is very asymmetric. Models trained on Flickr2K and Div2K transferreasonably to Adobe5kA:
+Flickr2K to Adobe reaches 18.70 dB, only about 1.4 dB below Adobe's own model (20.06 dB), and Div2K to Adobe reaches 16.46 dB. 
+The Adobe-trained model transfers much worse the other way, falling to around 13.8 to 14.0 dB on both 2K datasets, roughly 5 to 6 dB below what those datasets get with their own models.
+
+We assume this comes down to the input domain. 
+The Adobe5kA inputs are the JPEG-compressed expert-A export and carry compression artifacts, while Flickr2K
+and Div2K are native high-quality 2K images. 
+A model trained on the cleaner, more
+varied 2K data learns a more transferable approximation, whereas the Adobe-trained model overfits to its compressed inputs and struggles on clean ones. 
+So the approximation depends strongly on the training set, and clean, more diverse training data generalizes better.
 
 ### 4.3 Cross-Resolution Generalization
 
@@ -236,11 +260,25 @@ For this experiment, we evaluate the same final checkpoint at multiple short-edg
 
 | Resolution | Model | MSE | PSNR (dB) | SSIM | Time (ms) |
 |---:|---|---:|---:|---:|---:|
-| TODO | TODO | TODO | TODO | TODO | TODO |
+| 240p | ⁠ CAN32+AN ⁠ | 0.036506 | 14.376 | 0.576 | 1.7 |
+| 480p | ⁠ CAN32+AN ⁠ | 0.016437 | 17.842 | 0.671 | 5.0 |
+| 720p | ⁠ CAN32+AN ⁠ | 0.009771 | 20.101 | 0.714 | 15.3 |
+| 1080p | ⁠ CAN32+AN ⁠ | 0.009625 | 20.166 | 0.733 | 35.6 |
+| 1440p | ⁠ CAN32+AN ⁠ | 0.016645 | 17.787 | 0.725 | 63.4 |
+
+![CAN32+AN quality vs evaluation resolution](figures/resolution_quality.png)
+*PSNR and SSIM for the Adobe5kA ⁠ CAN32+AN ⁠ model evaluated at different short-edge
+resolutions (shaded = 320–1440 training range, dashed = 1080p main eval). Quality
+is highest inside the training range, peaking at 720–1080p (~20.1–20.2 dB). It
+collapses at 240p (14.4 dB) — below the 320p training minimum — and drops again at
+1440p (17.8 dB), while inference time grows with pixel count. The model transfers
+well within the resolutions it was trained on but degrades outside them.*
+
+**TO DO: add explanation still**
 
 This experiment checks whether the model is sensitive to evaluation scale. We expect inference time to increase with resolution, while quality metrics may change depending on how well the learned operator transfers across image scales.
 
-### 4.5 Training Progression Over Checkpoints
+### 4.4 Training Progression Over Checkpoints
 
 Since we save intermediate checkpoints during training, we also evaluate how the model improves over time. This gives a more detailed view of convergence and whether the full 500k training iterations are necessary in our setting.
 
@@ -262,10 +300,32 @@ We evaluate selected checkpoints at:
 | Div2K | `CAN32+AN` | 250k | 20.269 | 19.399 | 0.738 | 0.734 |
 | Flickr2K | `CAN32+AN` | 500k | 20.049 | 20.049 | 0.743 | 0.743 |
 
-**TODO: ADD DEMO IMAGES OF MODEL UNDER DIFFERENT ITERATIONS**
+**Talk about the table**
+
+![PSNR over training iterations for all models](figures/progression_psnr.png)
+*Held-out PSNR vs training iteration (log scale), one line per model. All models
+improve steeply up to ~100k. Four of six (`CAN24+AN`, `CAN24+AND`, `CAN32+AND`,
+Div2K) peak at 250k and then regress slightly by 500k, whereas only the plain
+`CAN32+AN` models (Adobe5kA and Flickr2K) keep improving to 500k.*
+
+![SSIM over training iterations for all models](figures/progression_ssim.png)
+*The same models scored by SSIM. The trajectories are smoother than PSNR and
+largely plateau by 250k, with little of the late-training regression seen in PSNR —
+i.e. structural similarity is more stable than pixel-level error in the final
+quarter of training.*
+
+**TODO: [DEMO] show the learned filter using demo.py for the different models? perhaps include one or two in the main body, the rest in the appendix** (in progress)
+
+The figure below shows the learned filter for all four Adobe5kA variants on the same held-out image. The two paper variants (⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠) and the two adaptive-dilation variants (⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠) all recover the broad pencil-sketch structure; differences are in how much fine line detail and contrast each reproduces relative to the GT. Additional per-variant samples are in [Appendix C](#c-additional-demo-images).
+
+![Learned pencil-sketch filter across the four Adobe5kA variants](figures/variants_filter.png)
+Adobe5kA test image through ⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠, ⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠, with input and GT for reference.
+
+
+
 **TODO: EXPLANATION. Answer the question, did we really need to train 500k iterations?**
 
-### 4.6 Training Log Analysis
+### 4.5 Training Log Analysis
 
 Additionally, we analyze the training logs saved during optimization. These logs are used as supporting evidence in our study. The main claims are based on held-out test metrics, not training loss.
 
@@ -275,11 +335,21 @@ The plot shows training loss over iterations. This helps verify that the model i
 
 **TODO: EXPLANATION**
 
-### 4.7 Qualitative Results
+### 4.6 Qualitative Results
 
 We also generate qualitative demos using held-out test images. Each demo shows the input image, predictions from selected models, and the ground truth pencil-sketch target.
 
-**TODO: INSERT DEMO IMAGES HERE FOR ALL MODEL VARIANTS**
+**TODO: INSERT DEMO IMAGES HERE FOR ALL MODEL VARIANTS** (in progress)
+
+![Adobe5kA qualitative results across all four variants](figures/qual_adobe.png)
+Adobe5kA held-out images through all four variants (⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠, ⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠) with input and GT.
+
+![Flickr2K qualitative results](figures/qual_flickr.png)
+Flickr2K held-out images through the Flickr2K-trained ⁠ CAN32+AN ⁠ model.
+
+![Div2K qualitative results](figures/qual_div2k.png)
+Div2K held-out images through the Div2K-trained ⁠ CAN32+AN ⁠ model.
+
 
 ## 5. Discussion (WIP)
 
@@ -315,3 +385,10 @@ Although Section 2 defines the reproduction scope, several limitations affect ho
 ### C. Additional Demo Images
 
 ### D. Team Contributions
+
+| Team Member | Reproducibility Criteria | Contributions |
+|---|---|---|
+| Robin Kruijf | New algorithm variant | Implemented the adaptive-dilation CAN variants using deformable convolutions. Contributed to the `CAN24+AND` and `CAN32+AND` model variants used in the architecture ablation. |
+| Ocean Wang | Reproduced | Adapted the author's released TensorFlow parameterized-network implementation and used it to attempt reproducing the main CAN contribution. The original CAN variant code was not explicitly released, so this was based on the closest available official code. |
+| Johnny Wu | Replicated, New code variant | Reimplemented the core CAN training and evaluation pipeline in PyTorch, including dataset loading, random-resolution training, fixed train/test splits, demo generation, and evaluation.|
+| Nicholas Wu | New data, Ablation study | Added support for Div2K and Flickr2K experiments, model-training, preprocessing/run scripts. **TBD: Experiments on cross-dataset, cross-resolution and checkpoint-progression experiments.**|
