@@ -243,3 +243,13 @@ logs/
 
 # Local working notes (not for the shared repo)
 docs/
+
+# TensorFlow reference: second virtualenv + training run outputs (not source)
+.venv-tfref/
+tf_model_runs/
+
+# Generated outputs we do NOT commit (canonical, report-facing copies live in figures/):
+#   output/demo/    - raw demo.py image dumps (messy [..]/+ filenames)
+#   output/figures/ - plot-script working dir (copied into figures/)
+output/demo/
+output/figures/
