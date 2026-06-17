@@ -331,7 +331,14 @@ Additionally, we analyze the training logs saved during optimization. These logs
 
 The plot shows training loss over iterations. This helps verify that the model is learning during training and that optimization is stable.
 
-**TODO: Insert training loss vs iteration plot**
+![Training loss vs iteration for all models](figures/training_loss.png)
+*MSE training loss vs iteration (moving average, window = 2000; log y-axis), one
+line per model. All runs drop steeply over the first ~20–50k iterations and then
+decline slowly and stably for the remainder, confirming that optimization is
+stable under the batch-size-1, random-resolution regime. Notably, training loss
+keeps decreasing all the way to 500k even though held-out PSNR (§4.4) peaks around
+250k for most models — so the late-training gains largely reflect fitting the
+training set rather than improved generalization.*
 
 **TODO: EXPLANATION**
 
