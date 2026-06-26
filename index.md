@@ -46,7 +46,7 @@ We do not reproduce the full set of ten image-processing operators from the pape
 
 
 ### 2.2 Changes and Extensions
-- Reimplemented the model and training pipeline in PyTorch (orignal: TensorFlow)
+- Reimplemented the model and training pipeline in PyTorch (original: TensorFlow)
 - For the cross-dataset study, we did not evaluate on the RAISE dataset used in the paper. Instead, we used Flickr2K and Div2K as alternative datasets for cross-dataset generalization.
 - Added adaptive-dilation variants `CAN24+AND` and `CAN32+AND`
 - Added multi-checkpoint evaluation for training progression
@@ -82,7 +82,7 @@ We implemented four CAN-based model variants. The first two are based on the arc
 | `CAN24+AND` | 9 | 24 | Adaptive normalization | Our adaptive-dilation variant |
 | `CAN32+AND` | 10 | 32 | Adaptive normalization | Larger adaptive-dilation variant |
 
-NOTE: The `+AND` variants replace the fixed dilated convolutions with deformable convolutions which allows the model to learn spatial offsets instead of using a fixed dilation pattern. The `+AND` variants are not part of the original paper and is our introduced new algorithm variant.
+The `+AND` variants replace the fixed dilated convolutions with deformable convolutions which allows the model to learn spatial offsets instead of using a fixed dilation pattern. The `+AND` variants are not part of the original paper and is our introduced new algorithm variant.
 
 ### 3.2 Trained Models
 
@@ -92,8 +92,8 @@ NOTE: The `+AND` variants replace the fixed dilated convolutions with deformable
 | Adobe5kA `CAN32+AN` | `CAN32+AN` | Adobe5kA | 2500 | Larger paper model |
 | Adobe5kA `CAN24+AND` | `CAN24+AND` | Adobe5kA | 2500 | Adaptive-dilation variant |
 | Adobe5kA `CAN32+AND` | `CAN32+AND` | Adobe5kA | 2500 | Larger adaptive-dilation variant |
-| Flickr2K `CAN24+AN` | `CAN32+AN` | Flickr2K | 1325 | Cross-dataset generalization |
-| Div2K `CAN24+AN` | `CAN32+AN` | Div2K | 450 | Cross-dataset generalization |
+| Flickr2K `CAN32+AN` | `CAN32+AN` | Flickr2K | 1325 | Cross-dataset generalization |
+| Div2K `CAN32+AN` | `CAN32+AN` | Div2K | 450 | Cross-dataset generalization |
 
 
 ### 3.3 Datasets and Splits
@@ -103,6 +103,7 @@ We used paired image datasets where each input image has a corresponding pencil-
 The network learns the mapping from the original image to the processed pencil-sketch output.
 
 We used three datasets:
+
 | Dataset | Total Images | Training Samples | Purpose |
 |---|---:|---:|---|
 | Adobe5kA | 5000 | 2500 | Main reproduction dataset |
@@ -189,8 +190,6 @@ This experiment serves as our **main reproduction** result.
 - Lower MSE indicates lower pixel-level reconstruction error.
 - Time measures average inference time per image on our hardware.
 
-**TODO: Explain the results WRT to model comparison and ablations** (finished)
-
 There are a couple takeaways from the same-dataset evaluation.
 
 More capacity helps, `CAN32+AN` has wider layers and more parameters than
@@ -237,7 +236,7 @@ Div2K test image. Same pattern: the model trained on clean 2K data generalizes, 
 
 Every cross-dataset pairing does worse than its same-dataset version, which tells us the learned pencil-sketch mapping is not purely a function of the operator (identical everywhere), but also depends on the image statistics of the training data.
 
-The drop is very asymmetric. Models trained on Flickr2K and Div2K transferreasonably to Adobe5kA:
+The drop is very asymmetric. Models trained on Flickr2K and Div2K transfer reasonably to Adobe5kA:
 Flickr2K to Adobe reaches 18.70 dB, only about 1.4 dB below Adobe's own model (20.06 dB), and Div2K to Adobe reaches 16.46 dB. 
 The Adobe-trained model transfers much worse the other way, falling to around 13.8 to 14.0 dB on both 2K datasets, roughly 5 to 6 dB below what those datasets get with their own models.
 
@@ -312,12 +311,25 @@ largely plateau by 250k, with little of the late-training regression seen in PSN
 i.e. structural similarity is more stable than pixel-level error in the final
 quarter of training.*
 
-The figure below shows the learned filter for all four Adobe5kA variants on the same held-out image. The two paper variants (⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠) and the two adaptive-dilation variants (⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠) all recover the broad pencil-sketch structure; differences are in how much fine line detail and contrast each reproduces relative to the GT. Additional per-variant samples are in [Appendix C](#c-additional-demo-images).
+<!-- The figure below shows the learned filter for all four Adobe5kA variants on the same held-out image. The two paper variants (⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠) and the two adaptive-dilation variants (⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠) all recover the broad pencil-sketch structure; differences are in how much fine line detail and contrast each reproduces relative to the GT. Additional per-variant samples are in [Appendix C](#c-additional-demo-images).
 
 ![Learned pencil-sketch filter across the four Adobe5kA variants](figures/variants_filter.png)
-Adobe5kA test image through ⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠, ⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠, with input and GT for reference.
+Adobe5kA test image through ⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠, ⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠, with input and GT for reference. -->a
 
-*Did we need the full 500k?*
+<p align="center">
+  <img src="figures/progression_adobe32_main.png" width="1400">
+</p>
+
+<p align="center">
+  <em>
+    Same held-out Adobe5kA image evaluated with CAN32+AN checkpoints from 10k to 500k iterations.
+    Additional progression images are in <a href="#c-additional-demo-images">Appendix C</a>.
+  </em>
+</p>
+
+
+**Did we need the full 500k?**
+
 For most models, no. The steep gains finish before 100k, and four of six peak at 250k, so the final 250k iterations mostly costed compute without improving generalization. 
 The only exception is CAN32+AN, which keeps gaining to 500k on both datasets. In short, 500k is a safe upper bound that guarantees convergence for the larger model but is more than necessary for the smaller and adaptive-dilation variants.
 
@@ -342,8 +354,6 @@ The loss curves shows two things. Every run drops steeply over the first 20k to 
 
 We also generate qualitative demos using held-out test images. Each demo shows the input image, predictions from selected models, and the ground truth pencil-sketch target.
 
-**TODO: INSERT DEMO IMAGES HERE FOR ALL MODEL VARIANTS** (in progress)
-
 ![Adobe5kA qualitative results across all four variants](figures/qual_adobe.png)
 Adobe5kA held-out images through all four variants (⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠, ⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠) with input and GT.
 
@@ -352,6 +362,8 @@ Flickr2K held-out images through the Flickr2K-trained ⁠ CAN32+AN ⁠ model
 
 ![Div2K qualitative results](figures/qual_div2k.png)
 Div2K held-out images through the Div2K-trained ⁠ CAN32+AN ⁠ model.
+
+Additional qualitative examples are included in [Appendix C](#c-additional-demo-images).
 
 
 ## 5. Discussion (WIP)
@@ -398,15 +410,160 @@ The main limitation is that these conclusions rest on one operator and one reimp
 
 ### A. Reproducibility Details
 
-### B. Additional Results
+Our pipeline uses paired image folders. Each input image has a corresponding pencil-sketch target generated with OpenCV:
 
-### C. Additional Demo Images
+```python
+cv2.pencilSketch(image, sigma_s=60, sigma_r=0.07, shade_factor=0.05)
+```
 
-### D. Team Contributions
+Expected dataset structure:
+
+```text
+datasets/<dataset_name>/
+  inputs/
+  targets/
+```
+
+Fixed train/test splits are stored in:
+
+```text
+data_splits/<dataset_name>/
+  train_split.txt
+  test_split.txt
+```
+
+Training outputs are stored in:
+
+```text
+model_runs/<dataset_name>/<model_name>/
+```
+
+Evaluation and demo outputs are stored in:
+
+```text
+output/evaluate/
+output/demo/
+```
+
+Install dependencies:
+
+```bash
+uv sync
+```
+
+Train a model:
+
+```bash
+uv run train.py \
+  --dataset datasets/adobe5kA \
+  --model CAN32+AN \
+  --iterations 500000
+```
+
+Evaluate final checkpoints:
+
+```bash
+uv run python evaluate.py \
+  datasets/adobe5kA \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt
+```
+
+Evaluate checkpoint progression:
+
+```bash
+uv run python evaluate.py \
+  datasets/adobe5kA \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_10000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_20000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_50000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_100000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_250000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt
+```
+
+Generate qualitative demos:
+
+```bash
+uv run python demo.py \
+  datasets/adobe5kA \
+  model_runs/adobe5kA/CAN24+AN/CAN24+AN_final.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt \
+  --num-samples 3
+```
+
+Generate a fixed-image checkpoint progression demo:
+
+```bash
+uv run python demo.py \
+  datasets/adobe5kA \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_10000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_20000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_50000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_100000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_iter_250000.pt \
+  model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt \
+  --image-name a4732-Ja_Pe-40 \
+  --columns 4
+```
+
+Demo parameters:
+
+- `--num-samples`: randomly samples held-out test images
+- `--image-name`: selects a specific test image by filename stem
+- `--columns`: wraps model predictions into multiple rows for readability
+
+
+### B. Additional Demo Images
+
+#### Adobe5kA Additional Examples
+
+![Additional Adobe5kA demo 1](figures/appendix_adobe_1.png)
+
+![Additional Adobe5kA demo 2](figures/appendix_adobe_2.png)
+
+#### Flickr2K Additional Examples
+
+![Additional Flickr2K demo 1](figures/appendix_flickr_1.png)
+![Additional Flickr2K demo 2](figures/appendix_flickr_2.png)
+
+#### Div2K Additional Examples
+
+![Additional Div2K demo 1](figures/appendix_div2k_1.png)
+![Additional Div2K demo 2](figures/appendix_div2k_2.png)
+
+#### Checkpoint Progression Across Datasets
+##### Adobe5k checkpoint progression
+![Adobe5kA checkpoint progression example 1](figures/appendix_progression_adobe32_1.png)
+*Adobe5kA checkpoint progression example 1.*
+
+![Adobe5kA checkpoint progression example 2](figures/appendix_progression_adobe32_2.png)
+*Adobe5kA checkpoint progression example 2.*
+
+---
+##### Div2k checkpoint progression
+
+![Additional Div2K demo 1](figures/appendix_flickr_2.png)
+![Div2K checkpoint progression example 1](figures/appendix_progression_div2k_1.png)
+*Div2K checkpoint progression example 1.*
+
+![Div2K checkpoint progression example 2](figures/appendix_progression_div2k_2.png)
+*Div2K checkpoint progression example 2.*
+
+---
+##### Flickr2K checkpoint progression
+![Flickr2K checkpoint progression example 1](figures/appendix_progression_flickr_1.png)
+*Flickr2K checkpoint progression example 1.*
+
+![Flickr2K checkpoint progression example 2](figures/appendix_progression_flickr_2.png)
+*Flickr2K checkpoint progression example 2.*
+
+---
+
+### C. Team Contributions
 
 | Team Member | Reproducibility Criteria | Contributions |
 |---|---|---|
 | Robin Kruijf | New algorithm variant | Implemented the adaptive-dilation CAN variants using deformable convolutions. Contributed to the `CAN24+AND` and `CAN32+AND` model variants used in the architecture ablation. |
 | Ocean Wang | Reproduced | Adapted the author's released TensorFlow parameterized-network implementation and used it to attempt reproducing the main CAN contribution. The original CAN variant code was not explicitly released, so this was based on the closest available official code. |
 | Johnny Wu | Replicated, New code variant | Reimplemented the core CAN training and evaluation pipeline in PyTorch, including dataset loading, random-resolution training, fixed train/test splits, demo generation, and evaluation.|
-| Nicholas Wu | New data, Ablation study | Added support for Div2K and Flickr2K experiments, model training, and preprocessing/run scripts. Ran the cross-dataset, cross-resolution, and checkpoint-progression experiments
+| Nicholas Wu | New data, Ablation study | Added support for Div2K and Flickr2K experiments, model training, and preprocessing/run scripts. Ran the cross-dataset, cross-resolution, and checkpoint-progression experiments. |
