@@ -379,7 +379,7 @@ Div2K held-out images through the Div2K-trained ⁠ CAN32+AN ⁠ model.
 Additional qualitative examples are included in [Appendix C](#c-additional-demo-images).
 
 
-## 5. Discussion (WIP)
+## 5. Discussion
 
 ### 5.1 Did We Uphold the Paper's Main Claim?
 The paper claims a fully-convolutional network with dilated convolutions and adaptive normalization can approximate an expensive operator in one fast forward pass, and also that more capacity helps.
