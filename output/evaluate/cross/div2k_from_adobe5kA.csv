@@ -1,0 +1,2 @@
+dataset,trained_dataset,model,checkpoint,checkpoint_iteration,test_split,short_edge,images,mse,psnr,ssim,time_ms
+div2k,adobe5kA,CAN32+AN,model_runs/adobe5kA/CAN32+AN/CAN32+AN_final.pt,,data_splits/div2k/test_split.txt,1080,450,0.04011273756623268,13.96717643737793,0.6428067088127136,72.03447891606226
