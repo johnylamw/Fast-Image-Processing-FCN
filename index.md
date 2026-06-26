@@ -57,7 +57,7 @@ We do not reproduce the full set of ten image-processing operators from the pape
 - Baseline models such as FCN-8s and encoder-decoder networks.
 - Additional CAN variants from the paper such as `CAN32` and `CAN32+BN`
 - The nine other image-processing operators evaluated in the paper
-- Extension: Parameterized network variant which learns the image-operator with random sampling of parameters for image pairs of the operator in question. (i.e., pencil sketch $\sigma_s$)
+- Extension: Parameterized network variant which learns the image-operator with random sampling of parameters for image pairs of the operator in question. (i.e., pencil sketch)
 - Extension: Single-network variant for learning multiple operators in one network.
 
 ### 2.4 Reproducibility Criteria
@@ -149,6 +149,19 @@ We report four metrics:
 
 Evaluation results across different checkpoints are saved as CSV files in:
 ```output/evaluate/```
+
+### 3.6 Dilated Convolutions
+
+CAN needs a large receptive field to learn operators such as pencil-sketch shading, since the output of pixel can depend on another pixel that is far from it in the image. Normal 3x3 kernels only grow the receptive field by 2 pixels per layer. To obtain a large receptive field without having to add many layers we make use of dilted convolutions. Dilated convolutions solve this by spacing out the kernel taps instead of sampling them next to each other. A 3x3 with dilation rate d covers a (2d+1)x(2d+1) area but still only has 9 weights! Below is an image showing dilation 1, 2 and 4.
+
+
+[![Dilation 1 2 and 4 compared](figures/dilation_explained.png)]
+*Dilation of 1, 2 and 4 making the receptive field grow from 3x3 to 5x5 to 9x9.*
+
+Stacking layers with increasing dialation grows the receptive field even further. Our CAN32 model dobles the dilation every layer. At the last layer the model looks at context from across nearly most of the image. But this might not be needed for all image examples. A fixed dilation schedule treats every region the same way, but a flat patch and a busy textured patch do not need the same receptive field. So we added adaptive dilation: our `AND` variants replace the dilated convolutions with deformable convolutions, letting the network decide the receptive field per position instead of using a fixed schedule for the whole image. An extra offset convolution learns where each of the 9 taps should sample per position in the image.
+
+[![CAN32+AND and CAN24+AND architecture diagrams](figures/CAN32_CAN24_AND.png)]
+*`CAN32+AND and CAN24+AND, dilation double every layer. Each layer has a small offset convolution next to it predicting where its kernel taps should sample.*
 
 
 ## 4. Experiments and Results
