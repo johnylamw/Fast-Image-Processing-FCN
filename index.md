@@ -27,6 +27,7 @@ This paper is interesting to reproduce because it claims that learned image-proc
 
 Our reproduction implements the Context Aggregation Network (CAN) architecture in PyTorch, including adaptive normalization, random-resolution training, and evaluation with MSE, PSNR, SSIM, and runtime. We also evaluate cross-dataset generalization, model variants, and training progression over checkpoints.
 
+---
 ## 2. Reproduction Scope
 
 The original paper proposes using fully-convolutional networks to approximate image-processing operators. 
@@ -68,6 +69,7 @@ Our project satisfies the following reproducibility criteria:
 - **New algorithm variant**: We introduced adaptive-dilation CAN variants.
 - **Ablation study**: We compared different CAN variants and evaluated training progression over checkpoints.
 
+---
 
 ## 3. Implementation
 
@@ -148,8 +150,9 @@ We report four metrics:
 - Time is measured using `time.perf_counter()`
 
 Evaluation results across different checkpoints are saved as CSV files in:
-```output/evaluate/```
+`output/evaluate/`
 
+---
 
 ## 4. Experiments and Results
 
