@@ -1,0 +1,7 @@
+dataset,trained_dataset,model,checkpoint,checkpoint_iteration,test_split,short_edge,images,mse,psnr,ssim,time_ms
+flickr2k,flickr2k,CAN32+AN,model_runs/flickr2k/CAN32+AN/CAN32+AN_iter_10000.pt,10000,data_splits/flickr2k/test_split.txt,1080,1325,0.038189683109521866,14.183673858642578,0.3556270897388458,237.90454390616912
+flickr2k,flickr2k,CAN32+AN,model_runs/flickr2k/CAN32+AN/CAN32+AN_iter_20000.pt,20000,data_splits/flickr2k/test_split.txt,1080,1325,0.018489351496100426,17.326791763305664,0.5824640989303589,352.2931516040468
+flickr2k,flickr2k,CAN32+AN,model_runs/flickr2k/CAN32+AN/CAN32+AN_iter_50000.pt,50000,data_splits/flickr2k/test_split.txt,1080,1325,0.012476553209125996,19.03961944580078,0.6755772829055786,380.4501428592177
+flickr2k,flickr2k,CAN32+AN,model_runs/flickr2k/CAN32+AN/CAN32+AN_iter_100000.pt,100000,data_splits/flickr2k/test_split.txt,1080,1325,0.011452467180788517,19.412696838378906,0.6914109587669373,409.89368238187626
+flickr2k,flickr2k,CAN32+AN,model_runs/flickr2k/CAN32+AN/CAN32+AN_iter_250000.pt,250000,data_splits/flickr2k/test_split.txt,1080,1325,0.01287071593105793,18.90462303161621,0.7212474942207336,391.7076810821891
+flickr2k,flickr2k,CAN32+AN,model_runs/flickr2k/CAN32+AN/CAN32+AN_final.pt,500000,data_splits/flickr2k/test_split.txt,1080,1325,0.009885781444609165,20.04869270324707,0.7430726885795593,272.84391671840876

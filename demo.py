@@ -10,6 +10,24 @@ from utils import checkpoint_display_name, filter_pairs, get_device, load_model
 OUTPUT_DIR = "output/demo"
 DEMO_SHORT_EDGE = 720
 
+# Arial is not present on every platform (e.g. Linux), so fall back to a
+# guaranteed-available DejaVu font and finally PIL's bundled bitmap font.
+FONT_CANDIDATES = [
+    "Arial.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "DejaVuSans.ttf",
+]
+
+
+def load_font(font_size):
+    for path in FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(path, font_size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
 # randomly samples image pairs from the test split
 def choose_pairs(dataset, split_path, num_samples):
     pairs = filter_pairs(dataset, split_path)
@@ -36,8 +54,7 @@ def run_inference(model, input_path, device):
 
 # creates one labeled image panel
 def panel(image, label, height=360, font_size=20):
-    font = ImageFont.truetype("Arial.ttf", font_size)
-    # font = header_font(font_size)
+    font = load_font(font_size)
     width = round(image.width * height / image.height)
     image = image.resize((width, height), Image.Resampling.LANCZOS)
     header_height = font_size + 18
@@ -101,7 +118,13 @@ def main():
     parser.add_argument("--num-samples", type=int, default=1)
     parser.add_argument("--columns", type=int, default=None)
     parser.add_argument("--image-name", default=None)
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Seed the random test-split sampling so demo "
+                             "figures are reproducible.")
     args = parser.parse_args()
+
+    if args.seed is not None:
+        random.seed(args.seed)
 
     device = get_device()
 

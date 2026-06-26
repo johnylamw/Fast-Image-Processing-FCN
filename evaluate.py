@@ -74,6 +74,8 @@ def main():
     parser.add_argument("checkpoints", nargs="+")
     parser.add_argument("--short-edge", type=int, default=1080) # the paper uses 1080 for their experiments
     parser.add_argument("--num-samples", type=int, default=None)
+    parser.add_argument("--output", default=None,
+                        help="Output CSV path (default: output/evaluate/<dataset>_shortedge<N>_eval.csv)")
     args = parser.parse_args()
 
     device = get_device()
@@ -116,7 +118,7 @@ def main():
         )
 
     output_name = f"{dataset_name}_shortedge{args.short_edge}_eval.csv"
-    output_path = os.path.join(OUTPUT_DIR, output_name)
+    output_path = args.output or os.path.join(OUTPUT_DIR, output_name)
     save_results(output_path, rows)
     print(f"\nEvaluation Results: {output_path}")
 
