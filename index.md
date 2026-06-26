@@ -226,8 +226,6 @@ To keep the comparison focused on dataset shift, we compare the same architectur
 
 This experiment tests whether the learned pencil-sketch approximation depends strongly on the training dataset. 
 
-**TODO: add an example demo comparisons of how the different model generates for an image from the three datasets? 3 demos in total** (in progress)
-
 ![Cross-dataset comparison on an Adobe5kA test image](figures/crossdata_adobe.png)
 Adobe5kA test image. Left to right: input, the Adobe5kA / Flickr2K / Div2K ⁠ CAN32+AN ⁠ models, and the GT pencil sketch. The Adobe-trained model tracks the target most closely; the 2K-trained models render the same input with a slightly different tone.
 
@@ -237,8 +235,6 @@ Flickr2K test image. Here the Flickr2K- and Div2K-trained models stay close to G
 ![Cross-dataset comparison on a Div2K test image](figures/crossdata_div2k.png)
 Div2K test image. Same pattern: the model trained on clean 2K data generalizes, the Adobe-trained model degrades on the clean input.
 
-
-**TODO: explanation** (in progress)
 Every cross-dataset pairing does worse than its same-dataset version, which tells us the learned pencil-sketch mapping is not purely a function of the operator (identical everywhere), but also depends on the image statistics of the training data.
 
 The drop is very asymmetric. Models trained on Flickr2K and Div2K transferreasonably to Adobe5kA:
@@ -274,7 +270,8 @@ collapses at 240p (14.4 dB) — below the 320p training minimum — and drops ag
 1440p (17.8 dB), while inference time grows with pixel count. The model transfers
 well within the resolutions it was trained on but degrades outside them.*
 
-**TO DO: add explanation still**
+From the graph we can see that, quality rises with resolution up to a point and then falls. PSNR climbs from 14.4 dB at 240p to a peak of 20.2 dB at 1080p, with 720p close behind at 20.1 dB, before dropping back to 17.8 dB at 1440p. SSIM follows the same arc, from 0.576 at 240p up to 0.733 at 1080p. The two ends of the table are the weakest: the smallest resolution collapses the hardest, and the largest also dips, despite using the most pixels. Inference time, by contrast, only ever increases, from 1.7 ms at 240p to 63.4 ms at 1440p, since the fully-convolutional model does more work as the input grows. 
+So the best quality sits in the middle of the range at 720p to 1080p, while pushing the resolution too low or too high costs accuracy, and pushing it higher also costs time.
 
 This experiment checks whether the model is sensitive to evaluation scale. We expect inference time to increase with resolution, while quality metrics may change depending on how well the learned operator transfers across image scales.
 
@@ -300,7 +297,8 @@ We evaluate selected checkpoints at:
 | Div2K | `CAN32+AN` | 250k | 20.269 | 19.399 | 0.738 | 0.734 |
 | Flickr2K | `CAN32+AN` | 500k | 20.049 | 20.049 | 0.743 | 0.743 |
 
-**Talk about the table**
+Most models reach their best held-out PSNR at 250k and then regress slightly by 500k. Four of six models (CAN24+AN, CAN24+AND, CAN32+AND, Div2K) follow this pattern, while only the plain CAN32+AN model on Adobe5kA and Flickr2K keep improving to 500k. 
+SSIM is calmer with plateauing by 250k and holding roughly flat to 500k instead of dropping back like PSNR.
 
 ![PSNR over training iterations for all models](figures/progression_psnr.png)
 *Held-out PSNR vs training iteration (log scale), one line per model. All models
@@ -314,16 +312,14 @@ largely plateau by 250k, with little of the late-training regression seen in PSN
 i.e. structural similarity is more stable than pixel-level error in the final
 quarter of training.*
 
-**TODO: [DEMO] show the learned filter using demo.py for the different models? perhaps include one or two in the main body, the rest in the appendix** (in progress)
-
 The figure below shows the learned filter for all four Adobe5kA variants on the same held-out image. The two paper variants (⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠) and the two adaptive-dilation variants (⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠) all recover the broad pencil-sketch structure; differences are in how much fine line detail and contrast each reproduces relative to the GT. Additional per-variant samples are in [Appendix C](#c-additional-demo-images).
 
 ![Learned pencil-sketch filter across the four Adobe5kA variants](figures/variants_filter.png)
 Adobe5kA test image through ⁠ CAN24+AN ⁠, ⁠ CAN32+AN ⁠, ⁠ CAN24+AND ⁠, ⁠ CAN32+AND ⁠, with input and GT for reference.
 
-
-
-**TODO: EXPLANATION. Answer the question, did we really need to train 500k iterations?**
+*Did we need the full 500k?*
+For most models, no. The steep gains finish before 100k, and four of six peak at 250k, so the final 250k iterations mostly costed compute without improving generalization. 
+The only exception is CAN32+AN, which keeps gaining to 500k on both datasets. In short, 500k is a safe upper bound that guarantees convergence for the larger model but is more than necessary for the smaller and adaptive-dilation variants.
 
 ### 4.5 Training Log Analysis
 
@@ -340,7 +336,7 @@ keeps decreasing all the way to 500k even though held-out PSNR (§4.4) peaks aro
 250k for most models — so the late-training gains largely reflect fitting the
 training set rather than improved generalization.*
 
-**TODO: EXPLANATION**
+The loss curves shows two things. Every run drops steeply over the first 20k to 50k iterations and then declines smoothly with no spikes, confirming stable optimization under the batch-size-1, random-resolution regime. But training loss keeps falling to 500k even though held-out PSNR peaks around 250k, a clear sign of mild overfitting: the late gains reflect fitting the training images rather than a better general approximation. This is why our main claims rest on held-out metrics, not training loss.
 
 ### 4.6 Qualitative Results
 
@@ -361,8 +357,18 @@ Div2K held-out images through the Div2K-trained ⁠ CAN32+AN ⁠ model.
 ## 5. Discussion (WIP)
 
 ### 5.1 Did We Uphold the Paper's Main Claim?
+The paper claims a fully-convolutional network with dilated convolutions and adaptive normalization can approximate an expensive operator in one fast forward pass, and also that more capacity helps.
+For the pencil-sketch operator, our results agree with this. 
+The CAN models learn the mapping and run it in tens of milliseconds at 1080p. 
+The larger CAN32+AN also beats CAN24+AN on every metric (20.06 vs 18.67 dB PSNR) at a small runtime cost, matching the paper's capacity trend. 
+We tested only one operator, so we cannot claim it holds for all ten. But within that scope, the main claim stands.
 
 ### 5.2 Main Findings
+- Capacity helps. CAN32+AN improves over CAN24+AN on MSE, PSNR, and SSIM at a small runtime cost, consistent with the paper.
+- Adaptive dilation did not help here. Our +AND variants scored lower and ran up to four times slower. The pencil-sketch mapping is local and smooth, so the fixed dilation already provides enough receptive field and the learned offsets mostly add cost.
+- Cross-dataset transfer is asymmetric. Models trained on the cleaner Flickr2K and Div2K transfer reasonably to Adobe5kA, while the Adobe-trained model drops 5 to 6 dB on the 2K data, pointing to its compressed inputs as the cause.
+- The model is resolution-bound. Quality peaks at 720p to 1080p inside the training range and degrades when evaluated below or above it.
+- 500k iterations is more than needed for most variants. Most models peak around 250k, and only the plain CAN32+AN keeps improving to 500k.
 
 ### 5.3 Limitations
 
@@ -383,6 +389,11 @@ Although Section 2 defines the reproduction scope, several limitations affect ho
 
 ## 6. Conclusion
 
+We reproduced the Context Aggregation Network from Chen et al. in PyTorch and evaluated it on the pencil-sketch operator across same-dataset, cross-dataset, cross-resolution, and training-progression experiments. 
+Within this single-operator scope, the core claim holds: the network learns a fast, accurate approximation, and added capacity improves it. 
+Our extensions sharpens this picture. Adaptive-dilation variants did not help for this local, smooth operator, cross-dataset transfer is asymmetric and favors cleaner training data, quality is tied to the training resolutions, and most variants converge well before the paper's 500k-iteration budget.
+The main limitation is that these conclusions rest on one operator and one reimplementation, so confirming them across the full operator set and against the original baselines is the natural next step.
+
 ## Appendix
 
 ### A. Reproducibility Details
@@ -398,4 +409,4 @@ Although Section 2 defines the reproduction scope, several limitations affect ho
 | Robin Kruijf | New algorithm variant | Implemented the adaptive-dilation CAN variants using deformable convolutions. Contributed to the `CAN24+AND` and `CAN32+AND` model variants used in the architecture ablation. |
 | Ocean Wang | Reproduced | Adapted the author's released TensorFlow parameterized-network implementation and used it to attempt reproducing the main CAN contribution. The original CAN variant code was not explicitly released, so this was based on the closest available official code. |
 | Johnny Wu | Replicated, New code variant | Reimplemented the core CAN training and evaluation pipeline in PyTorch, including dataset loading, random-resolution training, fixed train/test splits, demo generation, and evaluation.|
-| Nicholas Wu | New data, Ablation study | Added support for Div2K and Flickr2K experiments, model-training, preprocessing/run scripts. **TBD: Experiments on cross-dataset, cross-resolution and checkpoint-progression experiments.**|
+| Nicholas Wu | New data, Ablation study | Added support for Div2K and Flickr2K experiments, model training, and preprocessing/run scripts. Ran the cross-dataset, cross-resolution, and checkpoint-progression experiments
