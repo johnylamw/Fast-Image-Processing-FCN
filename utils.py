@@ -36,7 +36,13 @@ def checkpoint_dataset_name(checkpoint_path):
 
 # formats the checkpoint label used in demo figures
 def checkpoint_display_name(checkpoint_path):
-    return f"{checkpoint_dataset_name(checkpoint_path)}/{checkpoint_model_name(checkpoint_path)}"
+    display_name = f"{checkpoint_dataset_name(checkpoint_path)}/{checkpoint_model_name(checkpoint_path)}"
+    iteration = checkpoint_iteration(checkpoint_path)
+    if iteration:
+        display_name = f"{display_name}/{int(iteration) // 1000}k"
+    elif os.path.basename(checkpoint_path).endswith("_final.pt"):
+        display_name = f"{display_name}/500k"
+    return display_name
 
 # gets the checkpoint iteration from the filename
 def checkpoint_iteration(checkpoint_path):
