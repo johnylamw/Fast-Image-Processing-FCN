@@ -17,7 +17,7 @@
     
 </centering>
 
-
+**Code Repository:** [johnylamw/Fast-Image-Processing-FCN](https://github.com/johnylamw/Fast-Image-Processing-FCN)
 
 ## 1. Introduction and Motivation
 
@@ -364,6 +364,7 @@ Flickr2K held-out images through the Flickr2K-trained ⁠ CAN32+AN ⁠ model
 Div2K held-out images through the Div2K-trained ⁠ CAN32+AN ⁠ model.
 
 Additional qualitative examples are included in [Appendix C](#c-additional-demo-images).
+()
 
 
 ## 5. Discussion (WIP)
@@ -514,6 +515,8 @@ Demo parameters:
 
 
 ### B. Additional Demo Images
+
+Even more additional unorganized demo outputs are available in [`output/demo/`](https://github.com/johnylamw/Fast-Image-Processing-FCN/tree/main/output/demo).
 
 #### Adobe5kA Additional Examples
 
