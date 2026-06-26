@@ -69,6 +69,16 @@ Our project satisfies the following reproducibility criteria:
 - **New algorithm variant**: We introduced adaptive-dilation CAN variants.
 - **Ablation study**: We compared different CAN variants and evaluated training progression over checkpoints.
 
+### 2.5 Reproducing the Released TensorFlow Code
+
+In addition to our PyTorch reimplementation, we attempted to run the authors' released code so we could compare it against our own. As noted in 2.4, only the parameterized and single-network variants were released, so we worked from the parameterized script.
+
+The released code targets TensorFlow 1.x and uses `tensorflow.contrib.slim`, which was removed in TensorFlow 2.0 and is unavailable in any current version, so it cannot run as-is. We ported it to TensorFlow 2 with Keras and reduced the parameterized version back to the plain three-channel operator approximator so it matches the base CAN. We kept the parts that define the reference model: the dilated convolution stack, leaky ReLU, adaptive normalization, identity initialization, MSE loss, and Adam optimizer. The ported model's parameter count matches the value reported for `CAN32`, which indicates the architecture was translated correctly. We pointed its data loading at our own dataset layout so it would train on the same image pairs as our PyTorch model.
+
+The port trained without crashing and the loss decreased as expected, but it was too slow to finish, on track to take much longer than the training time reported in the paper. We did not keep usable checkpoints, so we do not report accuracy numbers for the TensorFlow model, only that it trains, converges, and matches the paper's architecture.
+
+The slowness comes from data loading, not from the GPU or TensorFlow itself. The released code decodes and feeds images one at a time on a single thread, so each iteration the GPU waits while the CPU decodes the next full-resolution image. Our PyTorch implementation avoids this only because its `DataLoader` decodes images in parallel background workers, which the released code has no equivalent for. The authors' own data directories are named for fixed resolutions such as 480p and 1080p, which suggests they resized the dataset offline before training. The released code includes no such step, so working from the code alone means loading full-resolution images every iteration and running into a decoding cost the authors had already removed. The method itself reproduces well, but the reported training time does not reproduce from the released code alone, because it depends on preprocessing and data-loading work that the paper does not describe.
+
 ---
 
 ## 3. Implementation
